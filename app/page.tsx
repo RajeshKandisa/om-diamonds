@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Image from 'next/image';
 
 interface PurityMapping {
   id: string;
@@ -164,16 +165,22 @@ export default function OmDiamondsApp() {
       {/* HEADER BAR */}
       <header className="bg-white border-b border-slate-200 px-4 py-4 sticky top-0 z-50 shadow-sm">
         <div className="max-w-md mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="font-bold text-xl tracking-tight text-amber-600">OM DIAMONDS</h1>
-            <p className="text-xs text-slate-500">Rate Calculator & Configuration Platform</p>
+          
+          {/* 1. Left Side: Your Clean, Tailored Gold Text Brand Mark */}
+          <div className="flex items-center">
+            <span className="text-xl font-bold tracking-[0.15em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-700 drop-shadow-sm">
+              Om Diamonds
+            </span>
           </div>
+
+          {/* 2. Right Side: The Smart, Working Toggle Button */}
           <button
             onClick={() => setIsAdminView(!isAdminView)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 rounded-lg text-xs font-semibold transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 rounded-lg text-xs font-semibold transition shadow-sm border border-slate-200"
           >
             {isAdminView ? "← Back to Calculator" : "⚙️ Manage Rules"}
           </button>
+
         </div>
       </header>
 
