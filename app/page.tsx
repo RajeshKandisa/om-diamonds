@@ -66,13 +66,22 @@ export default function OmDiamondsApp() {
   const [newLaborTier, setNewLaborTier] = useState("");
   const [newLaborRateInput, setNewLaborRateInput] = useState("");
 
-  // Sync defaults on initialization
+  // Live sync configuration fields whenever global settings default overrides change
   useEffect(() => {
-    if (!goldRate) setGoldRate(defaultGoldRate);
-    if (!diamondRate) setDiamondRate(defaultDiamondRate);
-    if (!wastagePct) setWastagePct(defaultWastagePct);
-    if (!colorStoneRate) setColorStoneRate(defaultColorStoneRate);
-  }, [defaultGoldRate, defaultDiamondRate, defaultWastagePct, defaultColorStoneRate]);
+    setGoldRate(defaultGoldRate);
+  }, [defaultGoldRate]);
+
+  useEffect(() => {
+    setDiamondRate(defaultDiamondRate);
+  }, [defaultDiamondRate]);
+
+  useEffect(() => {
+    setWastagePct(defaultWastagePct);
+  }, [defaultWastagePct]);
+
+  useEffect(() => {
+    setColorStoneRate(defaultColorStoneRate);
+  }, [defaultColorStoneRate]);
 
   useEffect(() => {
     if (isCertEnabled) {
