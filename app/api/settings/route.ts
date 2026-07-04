@@ -1,38 +1,51 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import Redis from "ioredis";
 
-// Locate the JSON database file path securely on the system
-const dataFilePath = path.join(process.cwd(), "data", "settings.json");
+// Initialize the database client using your explicit environment key layout
+const redisClient = process.env.OMDIAMONDS_REDIS_URL 
+  ? new Redis(process.env.OMDIAMONDS_REDIS_URL) 
+  : null;
 
-// 1. GET: Fetches the current live global configurations for anyone opening the app
+// GET: Triggers automatically for everyone loading the website to fetch current settings
 export async function GET() {
   try {
-    if (!fs.existsSync(dataFilePath)) {
-      return NextResponse.json({ error: "Configuration database file missing" }, { status: 404 });
+    if (!redisClient) {
+      throw new Error("Redis connection string OMDIAMONDS_REDIS_URL is missing in environment variables.");
     }
-    const fileData = fs.readFileSync(dataFilePath, "utf8");
-    return NextResponse.json(JSON.parse(fileData));
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to read database configurations" }, { status: 500 });
+
+    const rawData = await redisClient.get("om_diamonds_settings");
+    
+    // If the database is brand new and empty, return safe hardcoded fallbacks
+    if (!rawData) {
+      return NextResponse.json({
+        defaultGoldRate: "14000",
+        defaultDiamondRate: "60000",
+        defaultWastagePct: "8.0",
+        defaultColorStoneRate: "200",
+        defaultCertRate: "700"
+      });
+    }
+
+    return NextResponse.json(JSON.parse(rawData));
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// 2. POST: Overwrites the shared JSON file instantly when a manager modifies a setting
-export async function POST(request: Request) {
+// POST: Triggers when an admin edits a settings field, saving updates globally
+export async function POST(request) {
   try {
-    const updatedSettings = await request.json();
-    
-    // Ensure the data directory exists safely
-    const dirPath = path.dirname(dataFilePath);
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
+    if (!redisClient) {
+      throw new Error("Redis connection string OMDIAMONDS_REDIS_URL is missing in environment variables.");
     }
 
-    // Write synchronized settings over the server's data file
-    fs.writeFileSync(dataFilePath, JSON.stringify(updatedSettings, null, 2), "utf8");
-    return NextResponse.json({ success: true, message: "Global configurations synchronized successfully!" });
-  } catch (error) {
+    const body = await request.json();
+    
+    // Standard Redis saves values as raw string text blocks, so stringify the payload
+    await redisClient.set("om_diamonds_settings", JSON.stringify(body));
+    
+    return NextResponse.json({ success: true });
+  } catch (err) {
     return NextResponse.json({ error: "Failed to synchronize configurations globally" }, { status: 500 });
   }
 }
