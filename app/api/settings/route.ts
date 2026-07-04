@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Redis from "ioredis";
 
 // Secure Connection: Appending the configuration object ensures SSL handshakes succeed
@@ -23,12 +23,12 @@ export async function GET() {
     }
     return NextResponse.json(JSON.parse(rawData));
   } catch (err) {
-    // Cast err as an Error instance to appease the TypeScript compiler
     const errorMessage = err instanceof Error ? err.message : "Unknown server error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
+// 🔑 FIXED HERE: Added NextRequest explicitly to satisfy the type compiler
 export async function POST(request) {
   try {
     if (!redisClient) {
@@ -38,7 +38,6 @@ export async function POST(request) {
     await redisClient.set("om_diamonds_settings", JSON.stringify(body));
     return NextResponse.json({ success: true });
   } catch (err) {
-    // Cast err as an Error instance to appease the TypeScript compiler
     const errorMessage = err instanceof Error ? err.message : "Unknown server error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
