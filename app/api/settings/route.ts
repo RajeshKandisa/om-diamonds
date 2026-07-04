@@ -28,8 +28,8 @@ export async function GET() {
   }
 }
 
-// 🔑 FIXED HERE: Added NextRequest explicitly to satisfy the type compiler
-export async function POST(request) {
+// 🔑 FIXED FOR REAL: Added the explicit TypeScript type mapping here
+export async function POST(request: NextRequest) {
   try {
     if (!redisClient) {
       throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
