@@ -450,7 +450,7 @@ export default function OmDiamondsApp() {
                     onChange={(e) => setGoldRate(e.target.value)} 
                     className={`w-full px-3 py-2 border rounded-xl text-sm ${isGoldRateInvalid ? "border-red-500 bg-red-50" : "border-slate-200"}`} 
                   />
-                  {isGoldRateInvalid && <span className="text-[10px] font-semibold text-red-500">Rate required & can't be 0</span>}
+                  {isGoldRateInvalid && <span className="text-[10px] font-semibold text-red-500">Rate required & can&apos;t be 0</span>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Metal Purity</label>
@@ -521,7 +521,7 @@ export default function OmDiamondsApp() {
                     onChange={(e) => setDiamondRate(e.target.value)} 
                     className={`w-full px-3 py-2 border rounded-xl text-sm ${isDiamondRateInvalid ? "border-red-500 bg-red-50" : "border-slate-200"}`} 
                   />
-                  {isDiamondRateInvalid && <span className="text-[10px] font-semibold text-red-500">Rate required & can't be 0</span>}
+                  {isDiamondRateInvalid && <span className="text-[10px] font-semibold text-red-500">Rate required & can&apos;t be 0</span>}
                 </div>
               </div>
 
