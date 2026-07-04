@@ -9,15 +9,27 @@ const DEFAULT_SETTINGS = {
   defaultCertRate: "700"
 };
 
-// A small utility function to ensure the TCP connection handshake is 100% completed
 const connectSafely = async (client: Redis): Promise<void> => {
   if (client.status === "ready") return;
   
   return new Promise((resolve, reject) => {
     client.once("ready", resolve);
     client.once("error", reject);
-    // If it takes more than 3 seconds to complete the handshake, timeout safely
-    setTimeout(() => reject(new Error("Redis connection handshake timed out")), 3000);
+    setTimeout(() => reject(new Error("Redis connection handshake timed out")), 4000);
+  });
+};
+
+// Helper function to build the client with correct TLS settings based on the protocol
+const createRedisClient = (rawUrl: string) => {
+  // 🔑 FIX: If the string uses standard "redis://", DO NOT pass the tls block. Only pass it for "rediss://"
+  const isSecure = rawUrl.startsWith("rediss://");
+
+  return new Redis(rawUrl, {
+    ...(isSecure ? { tls: { rejectUnauthorized: false } } : {}),
+    connectTimeout: 4000,
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+    retryStrategy() { return null; }
   });
 };
 
@@ -27,18 +39,10 @@ export async function GET() {
     return NextResponse.json({ ...DEFAULT_SETTINGS, warning: "Missing OMDIAMONDS_REDIS_URL" });
   }
 
-  const client = new Redis(rawUrl, {
-    tls: { rejectUnauthorized: false },
-    connectTimeout: 3000,
-    maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
-    retryStrategy() { return null; }
-  });
+  const client = createRedisClient(rawUrl);
 
   try {
-    // 🔑 WAIT: Stay paused here until the TCP stream is writeable and ready!
     await connectSafely(client);
-
     const rawData = await client.get("om_diamonds_settings");
     await client.quit();
 
@@ -62,20 +66,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing database environment variable" }, { status: 500 });
   }
 
-  const client = new Redis(rawUrl, {
-    tls: { rejectUnauthorized: false },
-    connectTimeout: 3000,
-    maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
-    retryStrategy() { return null; }
-  });
+  const client = createRedisClient(rawUrl);
 
   try {
     const body = await request.json();
 
-    // 🔑 WAIT: Stay paused here until the TCP stream is writeable and ready!
     await connectSafely(client);
-
     await client.set("om_diamonds_settings", JSON.stringify(body));
     await client.quit();
     
