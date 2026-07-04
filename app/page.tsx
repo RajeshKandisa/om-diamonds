@@ -85,7 +85,7 @@ export default function OmDiamondsApp() {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => {
-        if (data) {
+        if (data && !data.error) {
           if (data.defaultGoldRate) { setDefaultGoldRate(data.defaultGoldRate); setGoldRate(data.defaultGoldRate); }
           if (data.defaultDiamondRate) { setDefaultDiamondRate(data.defaultDiamondRate); setDiamondRate(data.defaultDiamondRate); }
           if (data.defaultWastagePct) { setDefaultWastagePct(data.defaultWastagePct); setWastagePct(data.defaultWastagePct); }
@@ -94,7 +94,7 @@ export default function OmDiamondsApp() {
         }
       })
       .catch((err) => console.error("Failed to load global settings:", err));
-  }, []); // Empty brackets ensure this runs exactly ONCE when the app loads
+  }, []);
 
   // Live sync configuration fields whenever global settings default overrides change
   useEffect(() => { setGoldRate(defaultGoldRate); }, [defaultGoldRate]);
@@ -357,7 +357,6 @@ export default function OmDiamondsApp() {
   // --- Function to save the global settings to the database --- //
   const saveGlobalSettings = async (updatedFields: Record<string, string>) => {
     try {
-      // Combine current state values with the newly updated field
       const payload = {
         defaultGoldRate,
         defaultDiamondRate,
@@ -366,14 +365,14 @@ export default function OmDiamondsApp() {
         defaultCertRate,
         ...updatedFields
       };
-
+  
       await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } catch (err) {
-      console.error("Failed to save configuration:", err);
+      console.error("Failed to sync updated configurations with server:", err);
     }
   };
 
@@ -590,61 +589,55 @@ export default function OmDiamondsApp() {
                   <input 
                     type="number" 
                     value={defaultGoldRate} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDefaultGoldRate(val);
-                      saveGlobalSettings({ defaultGoldRate: val });
-                    }}
-                    className="w-full px-3 py-1.5 border rounded-xl text-sm" />
+                    onChange={(e) => setDefaultGoldRate(e.target.value)}
+                    onBlur={(e) => saveGlobalSettings({ defaultGoldRate: e.target.value })}
+                    className="w-full px-3 py-1.5 border rounded-xl text-sm" 
+                  />
                 </div>
+                
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Default Diamond Rate (₹/ct)</label>
                   <input 
                     type="number" 
                     value={defaultDiamondRate} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDefaultDiamondRate(val);
-                      saveGlobalSettings({ defaultDiamondRate: val });
-                    }}
-                    className="w-full px-3 py-1.5 border rounded-xl text-sm" />
+                    onChange={(e) => setDefaultDiamondRate(e.target.value)}
+                    onBlur={(e) => saveGlobalSettings({ defaultDiamondRate: e.target.value })}
+                    className="w-full px-3 py-1.5 border rounded-xl text-sm" 
+                  />
                 </div>
+                
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Default Certificate Rate (₹/ct)</label>
                   <input 
                     type="number" 
                     value={defaultCertRate} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDefaultCertRate(val);
-                      saveGlobalSettings({ defaultCertRate: val });
-                    }}
-                    className="w-full px-3 py-1.5 border rounded-xl text-sm" />
+                    onChange={(e) => setDefaultCertRate(e.target.value)}
+                    onBlur={(e) => saveGlobalSettings({ defaultCertRate: e.target.value })}
+                    className="w-full px-3 py-1.5 border rounded-xl text-sm" 
+                  />
                 </div>
+                
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Default Wastage Percentage (%)</label>
                   <input 
                     type="number" 
                     step="0.1" 
                     value={defaultWastagePct} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDefaultWastagePct(val);
-                      saveGlobalSettings({ defaultWastagePct: val });
-                    }}
-                    className="w-full px-3 py-1.5 border rounded-xl text-sm" />
+                    onChange={(e) => setDefaultWastagePct(e.target.value)}
+                    onBlur={(e) => saveGlobalSettings({ defaultWastagePct: e.target.value })}
+                    className="w-full px-3 py-1.5 border rounded-xl text-sm" 
+                  />
                 </div>
+                
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Default Color Stone Rate (₹/ct)</label>
                   <input 
                     type="number" 
                     value={defaultColorStoneRate} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setDefaultColorStoneRate(val);
-                      saveGlobalSettings({ defaultColorStoneRate: val });
-                    }}
-                    className="w-full px-3 py-1.5 border rounded-xl text-sm" />
+                    onChange={(e) => setDefaultColorStoneRate(e.target.value)}
+                    onBlur={(e) => saveGlobalSettings({ defaultColorStoneRate: e.target.value })}
+                    className="w-full px-3 py-1.5 border rounded-xl text-sm" 
+                  />
                 </div>
               </div>
             </div>
