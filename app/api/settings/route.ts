@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Redis from "ioredis";
 
-// Safe, fallback configuration defaults
 const DEFAULT_SETTINGS = {
   defaultGoldRate: "14000",
   defaultDiamondRate: "60000",
@@ -16,16 +15,19 @@ export async function GET() {
     return NextResponse.json({ ...DEFAULT_SETTINGS, warning: "Missing OMDIAMONDS_REDIS_URL" });
   }
 
-  // 🔑 SERVERLESS PATTERN: Open a dedicated client for this specific request
+  // 🔑 SAFE SERVERLESS CONFIGURATION
   const client = new Redis(rawUrl, {
     tls: { rejectUnauthorized: false },
     connectTimeout: 3000,
+    maxRetriesPerRequest: null,       // 🚀 FIX: Must be set to null when enableReadyCheck is false or handling retryStrategy
+    enableOfflineQueue: false,        // 🚀 FIX: Drops commands instantly if the socket isn't ready, preventing queue accumulation
+    retryStrategy() {
+      return null;                    // 🚀 FIX: Tells the driver "Do not retry, fail instantly so we can start fresh"
+    }
   });
 
   try {
     const rawData = await client.get("om_diamonds_settings");
-    
-    // Disconnect right away so we don't leak sockets on the server
     await client.quit();
 
     if (!rawData) {
@@ -34,9 +36,7 @@ export async function GET() {
     
     return NextResponse.json(JSON.parse(rawData));
   } catch (err) {
-    // Safely close connection even if the command crashes
     try { client.disconnect(); } catch {}
-    
     return NextResponse.json({
       ...DEFAULT_SETTINGS,
       warning: err instanceof Error ? err.message : "Database fallback activated"
@@ -50,25 +50,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing database environment variable" }, { status: 500 });
   }
 
-  // 🔑 SERVERLESS PATTERN: Open a dedicated client for this specific save event
+  // 🔑 SAFE SERVERLESS CONFIGURATION
   const client = new Redis(rawUrl, {
     tls: { rejectUnauthorized: false },
     connectTimeout: 3000,
+    maxRetriesPerRequest: null,       // 🚀 FIX: Must be set to null when enableReadyCheck is false or handling retryStrategy
+    enableOfflineQueue: false,        // 🚀 FIX: Drops commands instantly if the socket isn't ready
+    retryStrategy() {
+      return null;                    // 🚀 FIX: Tells the driver "Do not retry"
+    }
   });
 
   try {
     const body = await request.json();
-    
-    // Write the data immediately
     await client.set("om_diamonds_settings", JSON.stringify(body));
-    
-    // Disconnect immediately after completing the write action
     await client.quit();
     
     return NextResponse.json({ success: true });
   } catch (err) {
     try { client.disconnect(); } catch {}
-    
     const errorMessage = err instanceof Error ? err.message : "Unknown database save error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
