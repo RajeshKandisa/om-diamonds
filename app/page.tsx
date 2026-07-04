@@ -331,10 +331,6 @@ export default function OmDiamondsApp() {
     setPurities(purities.filter((p) => p.id !== id));
   };
 
-  const handleDeleteLabor = (id: string) => {
-    setLaborRules(laborRules.filter((l) => l.id !== id));
-  };
-
   // --- Function to save the global settings to the database --- //
   const saveGlobalSettings = async (updatedFields: Record<string, string>) => {
     try {
