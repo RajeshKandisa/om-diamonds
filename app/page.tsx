@@ -71,9 +71,7 @@ export default function OmDiamondsApp() {
   // --- ADMIN FORM INPUTS STATE ---
   const [newPurityName, setNewPurityName] = useState("");
   const [newPurityPct, setNewPurityPct] = useState("");
-  const [newLaborTier, setNewLaborTier] = useState("");
-  const [newLaborRateInput, setNewLaborRateInput] = useState("");
-
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load live settings from the API endpoint when any user opens the page
@@ -331,14 +329,6 @@ export default function OmDiamondsApp() {
 
   const handleDeletePurity = (id: string) => {
     setPurities(purities.filter((p) => p.id !== id));
-  };
-
-  const handleAddLabor = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLaborTier || !newLaborRateInput) return;
-    setLaborRules([...laborRules, { id: Date.now().toString(), tier_name: newLaborTier, base_labor_rate: parseFloat(newLaborRateInput) }]);
-    setNewLaborTier("");
-    setNewLaborRateInput("");
   };
 
   const handleDeleteLabor = (id: string) => {
