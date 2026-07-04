@@ -1,81 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import Redis from "ioredis";
 
-// Cache the connection instance globally so serverless environments don't open new sockets on every click
-let cachedClient: Redis | null = null;
-
-const getRedisClient = () => {
-  if (cachedClient) return cachedClient;
-
-  const rawUrl = process.env.OMDIAMONDS_REDIS_URL;
-  if (!rawUrl) return null;
-
-  // Use standard TCP connection rules with a strict network drop boundary
-  cachedClient = new Redis(rawUrl, {
-    tls: { rejectUnauthorized: false },
-    connectTimeout: 5000,           // Give up after 5 seconds instead of hanging
-    maxRetriesPerRequest: 1,       // 🚀 CRITICAL: Prevents hitting the 20-retry loop error if the network drops
-    retryStrategy(times) {
-      // If a request fails, wait 50ms and try just once more before returning a safe fallback
-      return times <= 1 ? 50 : null;
-    }
-  });
-
-  // Gracefully log connection issues to your Vercel logs instead of crashing the process
-  cachedClient.on("error", (err) => {
-    console.error("Redis socket error captured:", err.message);
-  });
-
-  return cachedClient;
+// Safe, fallback configuration defaults
+const DEFAULT_SETTINGS = {
+  defaultGoldRate: "14000",
+  defaultDiamondRate: "60000",
+  defaultWastagePct: "8.0",
+  defaultColorStoneRate: "200",
+  defaultCertRate: "700"
 };
 
 export async function GET() {
-  try {
-    const client = getRedisClient();
-    if (!client) {
-      throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
-    }
+  const rawUrl = process.env.OMDIAMONDS_REDIS_URL;
+  if (!rawUrl) {
+    return NextResponse.json({ ...DEFAULT_SETTINGS, warning: "Missing OMDIAMONDS_REDIS_URL" });
+  }
 
+  // 🔑 SERVERLESS PATTERN: Open a dedicated client for this specific request
+  const client = new Redis(rawUrl, {
+    tls: { rejectUnauthorized: false },
+    connectTimeout: 3000,
+  });
+
+  try {
     const rawData = await client.get("om_diamonds_settings");
     
+    // Disconnect right away so we don't leak sockets on the server
+    await client.quit();
+
     if (!rawData) {
-      return NextResponse.json({
-        defaultGoldRate: "14000",
-        defaultDiamondRate: "60000",
-        defaultWastagePct: "8.0",
-        defaultColorStoneRate: "200",
-        defaultCertRate: "700"
-      });
+      return NextResponse.json(DEFAULT_SETTINGS);
     }
     
     return NextResponse.json(JSON.parse(rawData));
   } catch (err) {
-    // If the database is sleeping or failing to connect, fall back to safe default numbers 
-    // so your website doesn't show a blank screen or error out for shoppers.
+    // Safely close connection even if the command crashes
+    try { client.disconnect(); } catch {}
+    
     return NextResponse.json({
-      defaultGoldRate: "14000",
-      defaultDiamondRate: "60000",
-      defaultWastagePct: "8.0",
-      defaultColorStoneRate: "200",
-      defaultCertRate: "700",
+      ...DEFAULT_SETTINGS,
       warning: err instanceof Error ? err.message : "Database fallback activated"
     });
   }
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const client = getRedisClient();
-    if (!client) {
-      throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
-    }
+  const rawUrl = process.env.OMDIAMONDS_REDIS_URL;
+  if (!rawUrl) {
+    return NextResponse.json({ error: "Missing database environment variable" }, { status: 500 });
+  }
 
+  // 🔑 SERVERLESS PATTERN: Open a dedicated client for this specific save event
+  const client = new Redis(rawUrl, {
+    tls: { rejectUnauthorized: false },
+    connectTimeout: 3000,
+  });
+
+  try {
     const body = await request.json();
+    
+    // Write the data immediately
     await client.set("om_diamonds_settings", JSON.stringify(body));
+    
+    // Disconnect immediately after completing the write action
+    await client.quit();
     
     return NextResponse.json({ success: true });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown database synchronization error";
+    try { client.disconnect(); } catch {}
+    
+    const errorMessage = err instanceof Error ? err.message : "Unknown database save error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
