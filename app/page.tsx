@@ -365,6 +365,7 @@ export default function OmDiamondsApp() {
         defaultWastagePct,
         defaultColorStoneRate,
         defaultCertRate,
+        defaultLaborRate,
         ...updatedFields
       };
   
@@ -668,23 +669,6 @@ export default function OmDiamondsApp() {
               <form onSubmit={handleAddPurity} className="flex gap-2 pt-2 border-t border-dashed">
                 <input type="text" placeholder="e.g., 22K" value={newPurityName} onChange={(e) => setNewPurityName(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border rounded-xl outline-none" />
                 <input type="number" placeholder="%" value={newPurityPct} onChange={(e) => setNewPurityPct(e.target.value)} className="w-20 px-3 py-1.5 text-sm border rounded-xl outline-none" />
-                <button type="submit" className="px-3 py-1.5 bg-slate-800 text-white text-sm font-semibold rounded-xl">Add</button>
-              </form>
-            </div>
-
-            <div className="bg-white rounded-2xl p-5 border shadow-sm space-y-4">
-              <h2 className="text-base font-bold text-slate-800 border-b pb-2">Labour Framework</h2>
-              <div className="space-y-2">
-                {laborRules.map((l) => (
-                  <div key={l.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border">
-                    <span className="text-sm font-medium text-slate-700">{l.tier_name} - ₹{l.base_labor_rate}/g</span>
-                    {laborRules.length > 1 && (<button onClick={() => handleDeleteLabor(l.id)} className="text-xs text-red-500 font-medium hover:underline">Delete</button>)}
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={handleAddLabor} className="flex gap-2 pt-2 border-t border-dashed">
-                <input type="text" placeholder="Tier Name" value={newLaborTier} onChange={(e) => setNewLaborTier(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border rounded-xl outline-none" />
-                <input type="number" placeholder="₹/g" value={newLaborRateInput} onChange={(e) => setNewLaborRateInput(e.target.value)} className="w-20 px-3 py-1.5 text-sm border rounded-xl outline-none" />
                 <button type="submit" className="px-3 py-1.5 bg-slate-800 text-white text-sm font-semibold rounded-xl">Add</button>
               </form>
             </div>
