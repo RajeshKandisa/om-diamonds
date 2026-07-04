@@ -1,29 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 
-// 🔑 FIXED INITIALIZATION: Explicitly formatting the Redis URL to HTTPS REST format for Upstash
+// 🔑 FIXED: Uses the native URL parser to strip inline credentials out of the endpoint string
 const getRedisClient = () => {
   const rawUrl = process.env.OMDIAMONDS_REDIS_URL;
   if (!rawUrl) return null;
 
-  // If it's a redis:// or rediss:// URL, convert it to a secure REST https:// URL
-  const restUrl = rawUrl.startsWith("redis")
-    ? rawUrl.replace(/^redis(s)?:\/\//, "https://")
-    : rawUrl;
+  try {
+    // Replace redis:// protocol temporarily with http:// so the native URL parser handles it perfectly
+    const parseableUrl = rawUrl.startsWith("redis") 
+      ? rawUrl.replace(/^redis(s)?:\/\//, "https://") 
+      : rawUrl;
+      
+    const parsed = new URL(parseableUrl);
+    
+    // Extract password/token safely from the credentials block
+    const token = parsed.password || parsed.username || "";
+    
+    // Construct a completely clean URL endpoint free of inline credentials (e.g., https://host:port)
+    const cleanRestUrl = `${parsed.protocol}//${parsed.host}`;
 
-  // Extract the token if it's embedded in a standard Redis URL (username:token@host)
-  let token = "";
-  if (restUrl.includes("@")) {
-    const credentials = restUrl.split("://")[1]?.split("@")[0];
-    if (credentials && credentials.includes(":")) {
-      token = credentials.split(":")[1];
-    }
+    return new Redis({
+      url: cleanRestUrl,
+      token: token,
+    });
+  } catch (error) {
+    console.error("Failed to parse connection credentials:", error);
+    return null;
   }
-
-  return new Redis({
-    url: restUrl,
-    token: token,
-  });
 };
 
 const client = getRedisClient();
