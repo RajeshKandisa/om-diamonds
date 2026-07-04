@@ -29,11 +29,6 @@ export default function OmDiamondsApp() {
     { id: "2", purity_name: "14K", purity_percentage: 60.0 },
   ]);
 
-  // --- LABOR SEEDS ---
-  const [laborRules, setLaborRules] = useState<LaborRule[]>([
-    { id: "1", tier_name: "Standard Plain", base_labor_rate: 650 },
-  ]);
-
   // --- NAVIGATION & DRAWER STATE ---
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false); 
@@ -103,6 +98,7 @@ export default function OmDiamondsApp() {
   useEffect(() => { setDiamondRate(defaultDiamondRate); }, [defaultDiamondRate]);
   useEffect(() => { setWastagePct(defaultWastagePct); }, [defaultWastagePct]);
   useEffect(() => { setColorStoneRate(defaultColorStoneRate); }, [defaultColorStoneRate]);
+  useEffect(() => { setLaborRate(defaultLaborRate); }, [defaultLaborRate]);
 
   useEffect(() => {
     if (isCertEnabled) {
@@ -111,13 +107,6 @@ export default function OmDiamondsApp() {
       setCertRate(""); 
     }
   }, [isCertEnabled, defaultCertRate]);
-
-  useEffect(() => {
-    const selectedRule = laborRules.find((l) => l.id === "1");
-    if (selectedRule && !laborRate) {
-      setLaborRate(selectedRule.base_labor_rate.toString());
-    }
-  }, [laborRules]);
 
   // Enhanced print style sheet injector that avoids structural heights and top blank areas
   useEffect(() => {
