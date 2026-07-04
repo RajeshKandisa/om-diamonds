@@ -9,24 +9,36 @@ const DEFAULT_SETTINGS = {
   defaultCertRate: "700"
 };
 
+// A small utility function to ensure the TCP connection handshake is 100% completed
+const connectSafely = async (client: Redis): Promise<void> => {
+  if (client.status === "ready") return;
+  
+  return new Promise((resolve, reject) => {
+    client.once("ready", resolve);
+    client.once("error", reject);
+    // If it takes more than 3 seconds to complete the handshake, timeout safely
+    setTimeout(() => reject(new Error("Redis connection handshake timed out")), 3000);
+  });
+};
+
 export async function GET() {
   const rawUrl = process.env.OMDIAMONDS_REDIS_URL;
   if (!rawUrl) {
     return NextResponse.json({ ...DEFAULT_SETTINGS, warning: "Missing OMDIAMONDS_REDIS_URL" });
   }
 
-  // 🔑 SAFE SERVERLESS CONFIGURATION
   const client = new Redis(rawUrl, {
     tls: { rejectUnauthorized: false },
     connectTimeout: 3000,
-    maxRetriesPerRequest: null,       // 🚀 FIX: Must be set to null when enableReadyCheck is false or handling retryStrategy
-    enableOfflineQueue: false,        // 🚀 FIX: Drops commands instantly if the socket isn't ready, preventing queue accumulation
-    retryStrategy() {
-      return null;                    // 🚀 FIX: Tells the driver "Do not retry, fail instantly so we can start fresh"
-    }
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+    retryStrategy() { return null; }
   });
 
   try {
+    // 🔑 WAIT: Stay paused here until the TCP stream is writeable and ready!
+    await connectSafely(client);
+
     const rawData = await client.get("om_diamonds_settings");
     await client.quit();
 
@@ -50,19 +62,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing database environment variable" }, { status: 500 });
   }
 
-  // 🔑 SAFE SERVERLESS CONFIGURATION
   const client = new Redis(rawUrl, {
     tls: { rejectUnauthorized: false },
     connectTimeout: 3000,
-    maxRetriesPerRequest: null,       // 🚀 FIX: Must be set to null when enableReadyCheck is false or handling retryStrategy
-    enableOfflineQueue: false,        // 🚀 FIX: Drops commands instantly if the socket isn't ready
-    retryStrategy() {
-      return null;                    // 🚀 FIX: Tells the driver "Do not retry"
-    }
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+    retryStrategy() { return null; }
   });
 
   try {
     const body = await request.json();
+
+    // 🔑 WAIT: Stay paused here until the TCP stream is writeable and ready!
+    await connectSafely(client);
+
     await client.set("om_diamonds_settings", JSON.stringify(body));
     await client.quit();
     
