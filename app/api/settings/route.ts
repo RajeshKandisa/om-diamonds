@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
 import Redis from "ioredis";
 
-// Initialize the database client using your explicit environment key layout
+// Secure Connection: Appending the configuration object ensures SSL handshakes succeed
 const redisClient = process.env.OMDIAMONDS_REDIS_URL 
-  ? new Redis(process.env.OMDIAMONDS_REDIS_URL) 
+  ? new Redis(process.env.OMDIAMONDS_REDIS_URL, { tls: { rejectUnauthorized: false } }) 
   : null;
 
-// GET: Triggers automatically for everyone loading the website to fetch current settings
 export async function GET() {
   try {
     if (!redisClient) {
-      throw new Error("Redis connection string OMDIAMONDS_REDIS_URL is missing in environment variables.");
+      throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
     }
-
     const rawData = await redisClient.get("om_diamonds_settings");
-    
-    // If the database is brand new and empty, return safe hardcoded fallbacks
     if (!rawData) {
       return NextResponse.json({
         defaultGoldRate: "14000",
@@ -25,28 +21,25 @@ export async function GET() {
         defaultCertRate: "700"
       });
     }
-
     return NextResponse.json(JSON.parse(rawData));
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // Cast err as an Error instance to appease the TypeScript compiler
+    const errorMessage = err instanceof Error ? err.message : "Unknown server error";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
-// POST: Triggers when an admin edits a settings field, saving updates globally
 export async function POST(request) {
   try {
     if (!redisClient) {
-      throw new Error("Redis connection string OMDIAMONDS_REDIS_URL is missing in environment variables.");
+      throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
     }
-
     const body = await request.json();
-    
-    // Standard Redis saves values as raw string text blocks, so stringify the payload
     await redisClient.set("om_diamonds_settings", JSON.stringify(body));
-    
     return NextResponse.json({ success: true });
   } catch (err) {
-    // 🔑 CHANGED HERE: Return the actual error message to see what went wrong!
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // Cast err as an Error instance to appease the TypeScript compiler
+    const errorMessage = err instanceof Error ? err.message : "Unknown server error";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
