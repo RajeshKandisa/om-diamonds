@@ -20,7 +20,8 @@ export default function OmDiamondsApp() {
   const [defaultDiamondRate, setDefaultDiamondRate] = useState<string>("60000");
   const [defaultWastagePct, setDefaultWastagePct] = useState<string>("8.0");
   const [defaultColorStoneRate, setDefaultColorStoneRate] = useState<string>("200");
-  const [defaultCertRate, setDefaultCertRate] = useState<string>("700"); 
+  const [defaultCertRate, setDefaultCertRate] = useState<string>("700");
+  const [defaultLaborRate, setDefaultLaborRate] = useState("500"); // 🔑 ADDED
 
   // --- DYNAMIC PURITY SEEDS ---
   const [purities, setPurities] = useState<PurityMapping[]>([
@@ -91,6 +92,7 @@ export default function OmDiamondsApp() {
           if (data.defaultWastagePct) { setDefaultWastagePct(data.defaultWastagePct); setWastagePct(data.defaultWastagePct); }
           if (data.defaultColorStoneRate) { setDefaultColorStoneRate(data.defaultColorStoneRate); setColorStoneRate(data.defaultColorStoneRate); }
           if (data.defaultCertRate) setDefaultCertRate(data.defaultCertRate);
+          if (data.defaultLaborRate) setLaborRate(data.defaultLaborRate);
         }
       })
       .catch((err) => console.error("Failed to load global settings:", err));
@@ -636,6 +638,17 @@ export default function OmDiamondsApp() {
                     value={defaultColorStoneRate} 
                     onChange={(e) => setDefaultColorStoneRate(e.target.value)}
                     onBlur={(e) => saveGlobalSettings({ defaultColorStoneRate: e.target.value })}
+                    className="w-full px-3 py-1.5 border rounded-xl text-sm" 
+                  />
+                </div>
+                {/* Global Labor Rate Input field */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Default Labor Rate (per gram)</label>
+                  <input
+                    type="number"
+                    value={defaultLaborRate}
+                    onChange={(e) => setDefaultLaborRate(e.target.value)}
+                    onBlur={(e) => saveGlobalSettings({ defaultLaborRate: e.target.value })}
                     className="w-full px-3 py-1.5 border rounded-xl text-sm" 
                   />
                 </div>
