@@ -1,0 +1,20 @@
+{
+  "defaultGoldRate": "14000",
+  "defaultDiamondRate": "60000",
+  "defaultWastagePct": "8.0",
+  "defaultColorStoneRate": "200",
+  "defaultCertRate": "700",
+  "defaultLaborRate": "650",
+  "purities": [
+    {
+      "id": "1",
+      "purity_name": "18K",
+      "purity_percentage": 76
+    },
+    {
+      "id": "2",
+      "purity_name": "14K",
+      "purity_percentage": 60
+    }
+  ]
+}
