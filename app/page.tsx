@@ -61,7 +61,7 @@ export default function OmDiamondsApp() {
   // --- QUOTE MAKER WORKFLOW STATE ---
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState<boolean>(false);
   const [clientName, setClientName] = useState<string>("");
-  const [clientPhone, setClientPhone] = useState<string>("9090909090");
+  const [clientPhone, setClientPhone] = useState<string>("");
   const [clientEmail, setClientEmail] = useState<string>("");
   const [itemType, setItemType] = useState<string>("");
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
