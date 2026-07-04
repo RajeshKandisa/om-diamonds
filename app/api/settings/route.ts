@@ -6,7 +6,8 @@ const DEFAULT_SETTINGS = {
   defaultDiamondRate: "60000",
   defaultWastagePct: "8.0",
   defaultColorStoneRate: "200",
-  defaultCertRate: "700"
+  defaultCertRate: "700",
+  defaultLaborRate: "500" // 🔑 ADDED: Added default global labor rate fallback
 };
 
 const connectSafely = async (client: Redis): Promise<void> => {
