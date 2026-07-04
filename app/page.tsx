@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from 'next/image';
+import React, { useState, useEffect, useRef } from "react";
 
 interface PurityMapping {
   id: string;
@@ -36,7 +35,7 @@ export default function OmDiamondsApp() {
 
   // --- NAVIGATION & DRAWER STATE ---
   const [isAdminView, setIsAdminView] = useState<boolean>(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false); // Slide-out control
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false); 
 
   // --- CALCULATOR FORM STATE ---
   const [goldRate, setGoldRate] = useState<string>("");
@@ -48,7 +47,10 @@ export default function OmDiamondsApp() {
   const [wastagePct, setWastagePct] = useState<string>("");
 
   const [diamondWeight, setDiamondWeight] = useState<string>("");
-  const [diamondRate, setDiamondRate] = useState<string>("");
+  const [diamondRate, setDiamondRate] = useState<string>("60000");
+
+  // --- NEW ERRORS TRIGGER STATE ---
+  const [showCalcErrors, setShowCalcErrors] = useState<boolean>(false);
 
   const [colorStoneWeight, setColorStoneWeight] = useState<string>("");
   const [colorStoneRate, setColorStoneRate] = useState<string>("");
@@ -60,28 +62,37 @@ export default function OmDiamondsApp() {
   const [discountType, setDiscountType] = useState<"Percentage" | "Amount">("Percentage");
   const [discountValue, setDiscountValue] = useState<string>("");
 
+  // --- QUOTE MAKER WORKFLOW STATE ---
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState<boolean>(false);
+  const [clientName, setClientName] = useState<string>("");
+  const [clientPhone, setClientPhone] = useState<string>("9090909090");
+  const [clientEmail, setClientEmail] = useState<string>("");
+  const [itemType, setItemType] = useState<string>("");
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [showFinalQuoteSheet, setShowFinalQuoteSheet] = useState<boolean>(false);
+  const [quoteDate, setQuoteDate] = useState<string>("");
+
   // --- ADMIN FORM INPUTS STATE ---
   const [newPurityName, setNewPurityName] = useState("");
   const [newPurityPct, setNewPurityPct] = useState("");
   const [newLaborTier, setNewLaborTier] = useState("");
   const [newLaborRateInput, setNewLaborRateInput] = useState("");
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync defaults on initialization
+  useEffect(() => {
+    if (!goldRate) setGoldRate(defaultGoldRate);
+    if (!diamondRate) setDiamondRate(defaultDiamondRate);
+    if (!wastagePct) setWastagePct(defaultWastagePct);
+    if (!colorStoneRate) setColorStoneRate(defaultColorStoneRate);
+  }, [defaultGoldRate, defaultDiamondRate, defaultWastagePct, defaultColorStoneRate]);
+
   // Live sync configuration fields whenever global settings default overrides change
-  useEffect(() => {
-    setGoldRate(defaultGoldRate);
-  }, [defaultGoldRate]);
-
-  useEffect(() => {
-    setDiamondRate(defaultDiamondRate);
-  }, [defaultDiamondRate]);
-
-  useEffect(() => {
-    setWastagePct(defaultWastagePct);
-  }, [defaultWastagePct]);
-
-  useEffect(() => {
-    setColorStoneRate(defaultColorStoneRate);
-  }, [defaultColorStoneRate]);
+  useEffect(() => { setGoldRate(defaultGoldRate); }, [defaultGoldRate]);
+  useEffect(() => { setDiamondRate(defaultDiamondRate); }, [defaultDiamondRate]);
+  useEffect(() => { setWastagePct(defaultWastagePct); }, [defaultWastagePct]);
+  useEffect(() => { setColorStoneRate(defaultColorStoneRate); }, [defaultColorStoneRate]);
 
   useEffect(() => {
     if (isCertEnabled) {
@@ -98,6 +109,49 @@ export default function OmDiamondsApp() {
     }
   }, [laborRules]);
 
+  // Enhanced print style sheet injector that avoids structural heights and top blank areas
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.innerHTML = `
+      @media print {
+        /* Completely clear browser default margins */
+        @page {
+          margin: 0mm;
+          size: auto;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #fff !important;
+        }
+        /* Hide everything on the viewport securely */
+        body * {
+          visibility: hidden !important;
+        }
+        /* Pull printable component to root viewport context and make it visible */
+        #print-quote-frame, #print-quote-frame * {
+          visibility: visible !important;
+        }
+        #print-quote-frame {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 24px !important;
+          border: none !important;
+          box-shadow: none !important;
+          background: white !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // --- CALCULATOR MATH ENGINE ---
   const calculateTotal = () => {
     const gRatePerGram = parseFloat(goldRate) || 0;
@@ -112,6 +166,7 @@ export default function OmDiamondsApp() {
     const cRate = isCertEnabled ? (parseFloat(certRate) || 0) : 0;
 
     const purityObj = purities.find((p) => p.id === selectedPurity);
+    const purityName = purityObj ? purityObj.purity_name : "18K";
     const purityPct = purityObj ? purityObj.purity_percentage : 76.0;
 
     const stonesWeightGrams = (dWeightCt + csWeightCt) * 0.2;
@@ -146,8 +201,11 @@ export default function OmDiamondsApp() {
     }
 
     const finalPrice = Math.max(0, subtotal - appliedDiscount);
+    const roundedFinalPrice = Math.round(finalPrice);
 
     return {
+      purityName,
+      purityPct,
       subtotal: subtotal.toFixed(2),
       netGoldWeight: netGoldWeight.toFixed(3),
       goldValue: calculatedGoldValue.toFixed(2),
@@ -156,11 +214,112 @@ export default function OmDiamondsApp() {
       totalColorStoneCost: totalColorStoneCost.toFixed(2),
       totalCertCost: totalCertCost.toFixed(2),
       appliedDiscount: appliedDiscount.toFixed(2),
-      finalPrice: finalPrice.toFixed(2),
+      finalPrice: roundedFinalPrice.toString(),
     };
   };
 
   const results = calculateTotal();
+
+  // --- IMAGE SELECTION COMPONENT FUNCTION ---
+  const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAttachedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- OPEN CUSTOMER INTAKE SCREEN WITH MANDATORY LAZY INPUT VALIDATIONS ---
+  const handleInitiateQuote = () => {
+    setShowCalcErrors(true);
+
+    if (!grossWeight || parseFloat(grossWeight) <= 0) {
+      alert("Validation Error: Gross Weight is mandatory and must be greater than 0.");
+      return;
+    }
+    if (!diamondWeight || parseFloat(diamondWeight) <= 0) {
+      alert("Validation Error: Diamond Weight is mandatory and must be greater than 0.");
+      return;
+    }
+
+    const currentGoldRate = parseFloat(goldRate) || 0;
+    const currentDiamondRate = parseFloat(diamondRate) || 0;
+    const currentColorStoneRate = parseFloat(colorStoneRate) || 0;
+
+    if (currentGoldRate <= 0) {
+      alert("Validation Error: Gold Rate cannot be 0 or empty.");
+      return;
+    }
+    if (currentDiamondRate <= 0) {
+      alert("Validation Error: Diamond Rate cannot be 0 or empty.");
+      return;
+    }
+    if (parseFloat(colorStoneWeight) > 0 && currentColorStoneRate <= 0) {
+      alert("Validation Error: Color Stone Rate cannot be 0 when color stone weight is defined.");
+      return;
+    }
+
+    setQuoteDate(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }));
+    setIsQuoteModalOpen(true);
+    setShowFinalQuoteSheet(false);
+  };
+
+  // --- COMPILE QUOTE DOCUMENT WITH USER DATA VALIDATIONS ---
+  const handleCompileQuote = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!clientName.trim()) {
+      alert("Validation Error: Customer Name is required.");
+      return;
+    }
+    if (!clientPhone.trim()) {
+      alert("Validation Error: Phone Number is required.");
+      return;
+    }
+
+    const numericPhone = clientPhone.replace(/\D/g, "");
+    if (numericPhone.length !== 10) {
+      alert("Validation Error: Phone number must be exactly 10 digits.");
+      return;
+    }
+
+    if (!itemType.trim()) {
+      alert("Validation Error: Item Type is required.");
+      return;
+    }
+
+    setShowFinalQuoteSheet(true);
+  };
+
+  // --- NATIVE SHARE ENGINE WITH DIRECT WHATSAPP REDIRECT ---
+  const handleWhatsAppInvoke = () => {
+    const cleanPhone = clientPhone.replace(/\D/g, "");
+    const localizedPhone = cleanPhone.startsWith("91") && cleanPhone.length === 12 ? cleanPhone : `91${cleanPhone}`;
+    
+    const messageText = `Hello ${clientName},\n\nThank you for visiting Om Diamonds. Here is your custom item estimation:\n\n✨ Total Valuation: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}\n▫ Gold Net Wt: ${results.netGoldWeight}g (${results.purityName})\n▫ Diamond Wt: ${diamondWeight || "0"} ct\n\nGenerated on ${quoteDate}.`;
+    
+    const encodedMsg = encodeURIComponent(messageText);
+    window.open(`https://wa.me/${localizedPhone}?text=${encodedMsg}`, "_blank");
+  };
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Om Diamonds Quote",
+          text: `Valuation Quote for ${clientName} - Total: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}`,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log("Sharing cancelled or failed", err);
+      }
+    } else {
+      handleWhatsAppInvoke();
+    }
+  };
 
   // --- BACKEND ADMIN MANAGEMENT CODE ---
   const handleAddPurity = (e: React.FormEvent) => {
@@ -187,115 +346,59 @@ export default function OmDiamondsApp() {
     setLaborRules(laborRules.filter((l) => l.id !== id));
   };
 
+  const isGrossWeightInvalid = showCalcErrors && (!grossWeight || parseFloat(grossWeight) <= 0);
+  const isDiamondWeightInvalid = showCalcErrors && (!diamondWeight || parseFloat(diamondWeight) <= 0);
+  const isGoldRateInvalid = showCalcErrors && (!goldRate || parseFloat(goldRate) <= 0);
+  const isDiamondRateInvalid = showCalcErrors && (!diamondRate || parseFloat(diamondRate) <= 0);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans relative overflow-x-hidden">
       
-      {/* BACKGROUND SHADE OVERLAY (Active when drawer slides open) */}
+      {/* BACKGROUND OVERLAY SHADE FOR MENU DRAWER */}
       {isDrawerOpen && (
-        <div 
-          onClick={() => setIsDrawerOpen(false)}
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity"
-        />
+        <div onClick={() => setIsDrawerOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity" />
       )}
 
       {/* SLIDE-OUT DRAWER FOR MANAGERS */}
       <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl border-l border-slate-200 p-5 z-50 transform transition-transform duration-300 ease-in-out ${isDrawerOpen ? "translate-x-0" : "translate-x-full"}`}>
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Manager Discounts</h3>
-          <button 
-            onClick={() => setIsDrawerOpen(false)}
-            className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 text-sm font-bold"
-          >
-            ✕
-          </button>
+          <button onClick={() => setIsDrawerOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 text-sm font-bold">✕</button>
         </div>
-
         <div className="space-y-4">
           <div>
             <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Discount Type</span>
             <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-slate-50 p-1">
-              <button
-                type="button"
-                onClick={() => setDiscountType("Percentage")}
-                className={`py-1.5 text-xs font-semibold rounded-lg transition ${discountType === "Percentage" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}
-              >
-                % Percentage
-              </button>
-              <button
-                type="button"
-                onClick={() => setDiscountType("Amount")}
-                className={`py-1.5 text-xs font-semibold rounded-lg transition ${discountType === "Amount" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-800"}`}
-              >
-                ₹ Fixed Amount
-              </button>
+              <button type="button" onClick={() => setDiscountType("Percentage")} className={`py-1.5 text-xs font-semibold rounded-lg transition ${discountType === "Percentage" ? "bg-amber-500 text-white shadow-sm" : "text-slate-600"}`}>% Percentage</button>
+              <button type="button" onClick={() => setDiscountType("Amount")} className={`py-1.5 text-xs font-semibold rounded-lg transition ${discountType === "Amount" ? "bg-amber-500 text-white shadow-sm" : "text-slate-600"}`}>₹ Fixed Amount</button>
             </div>
           </div>
-
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Discount Value Given ({discountType === "Percentage" ? "%" : "₹"})
-            </label>
-            <input
-              type="number"
-              step={discountType === "Percentage" ? "0.1" : "1"}
-              placeholder="0"
-              value={discountValue}
-              onChange={(e) => setDiscountValue(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono focus:border-slate-400 focus:outline-none"
-            />
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Discount Value Given ({discountType === "Percentage" ? "%" : "₹"})</label>
+            <input type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none" />
           </div>
-
           <div className="bg-slate-50 border rounded-xl p-3.5 space-y-2 text-xs">
             <span className="block font-bold text-slate-400 uppercase tracking-wide mb-1">Live Impact Summary</span>
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal:</span>
-              <span>₹{results.subtotal}</span>
-            </div>
-            <div className="flex justify-between text-emerald-600 font-medium">
-              <span>Applied Reduction:</span>
-              <span>-₹{results.appliedDiscount}</span>
-            </div>
+            <div className="flex justify-between text-slate-600"><span>Subtotal:</span><span>₹{parseFloat(results.subtotal).toLocaleString('en-IN')}</span></div>
+            <div className="flex justify-between text-emerald-600 font-medium"><span>Applied Reduction:</span><span>-₹{parseFloat(results.appliedDiscount).toLocaleString('en-IN')}</span></div>
             <hr />
-            <div className="flex justify-between font-bold text-slate-900 text-sm">
-              <span>Final Value:</span>
-              <span>₹{results.finalPrice}</span>
-            </div>
+            <div className="flex justify-between font-bold text-slate-900 text-sm"><span>Final Value:</span><span>₹{parseInt(results.finalPrice).toLocaleString('en-IN')}</span></div>
           </div>
-
-          <button
-            onClick={() => setIsDrawerOpen(false)}
-            className="w-full mt-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs uppercase tracking-wider rounded-xl shadow-xs transition"
-          >
-            Apply & Close Drawer
-          </button>
+          <button onClick={() => setIsDrawerOpen(false)} className="w-full mt-4 py-2.5 bg-slate-900 text-white font-semibold text-xs uppercase tracking-wider rounded-xl shadow-xs">Apply & Close</button>
         </div>
       </div>
 
       {/* HEADER BAR */}
       <header className="bg-white border-b border-slate-200 px-4 py-4 sticky top-0 z-40 shadow-sm">
         <div className="max-w-md mx-auto flex justify-between items-center">
-          <div className="flex items-center">
-            <span className="text-xl font-bold tracking-[0.15em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-700 drop-shadow-sm">
-              Om Diamonds
-            </span>
-          </div>
-
+          <span className="text-xl font-bold tracking-[0.15em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-700">Om Diamonds</span>
           <div className="flex items-center gap-2">
-            {/* Secret Option B Switch Trigger */}
             {!isAdminView && (
-              <button
-                onClick={() => setIsDrawerOpen(true)}
-                className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500 hover:text-slate-800 transition shadow-sm"
-                title="Open Settings Menu"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+              <button onClick={() => setIsDrawerOpen(true)} className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
               </button>
             )}
-
-            <button
-              onClick={() => setIsAdminView(!isAdminView)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 rounded-lg text-xs font-semibold transition shadow-sm border border-slate-200"
-            >
+            <button onClick={() => setIsAdminView(!isAdminView)} className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border">
               {isAdminView ? "← Back to Calculator" : "⚙️ Settings"}
             </button>
           </div>
@@ -304,361 +407,452 @@ export default function OmDiamondsApp() {
 
       <main className="max-w-md mx-auto p-4 pb-12">
         {!isAdminView ? (
-          /* =======================================================
-             FRONTEND: RATE CALCULATOR SCREEN
-             ======================================================= */
           <div className="space-y-5">
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Calculation Inputs</h2>
               
-              <div>
-                <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Calculation Inputs</h2>
-              </div>
-              
-              {/* Gold Inputs */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Gold Rate (₹/1g)</label>
-                  <input
-                    type="number"
-                    value={goldRate}
-                    onChange={(e) => setGoldRate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Gold Rate (₹/1g) <span className="text-red-500">*</span></label>
+                  <input 
+                    type="number" 
+                    value={goldRate} 
+                    onChange={(e) => setGoldRate(e.target.value)} 
+                    className={`w-full px-3 py-2 border rounded-xl text-sm ${isGoldRateInvalid ? "border-red-500 bg-red-50" : "border-slate-200"}`} 
                   />
+                  {isGoldRateInvalid && <span className="text-[10px] font-semibold text-red-500">Rate required & can't be 0</span>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Metal Purity</label>
-                  <select
-                    value={selectedPurity}
-                    onChange={(e) => setSelectedPurity(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl text-sm"
-                  >
-                    {purities.map((p) => (
-                      <option key={p.id} value={p.id}>{p.purity_name} ({p.purity_percentage}%)</option>
-                    ))}
+                  <select value={selectedPurity} onChange={(e) => setSelectedPurity(e.target.value)} className="w-full px-3 py-2 border bg-white rounded-xl text-sm">
+                    {purities.map((p) => (<option key={p.id} value={p.id}>{p.purity_name} ({p.purity_percentage}%)</option>))}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Gross Weight (g)</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={grossWeight}
-                  onChange={(e) => setGrossWeight(e.target.value)}
-                  placeholder="0.000"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Gross Weight (g) <span className="text-red-500 font-bold">*</span>
+                </label>
+                <input 
+                  type="number" 
+                  step="0.001" 
+                  value={grossWeight} 
+                  onChange={(e) => setGrossWeight(e.target.value)} 
+                  placeholder="0.000" 
+                  className={`w-full px-3 py-2 border rounded-xl text-sm transition-colors ${
+                    isGrossWeightInvalid ? "border-red-500 bg-red-50 focus:outline-red-500" : "border-slate-200"
+                  }`} 
                 />
+                {isGrossWeightInvalid && (
+                  <p className="text-red-500 text-[11px] font-semibold mt-1">⚠️ Gross Weight is mandatory and must be greater than 0</p>
+                )}
               </div>
 
-              {/* Cost Type Selection (Labor vs Wastage) */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-3">
+              <div className="bg-slate-50 p-3 rounded-xl border space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Cost Type Mechanism</span>
-                  <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setCostType("Labor")}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition ${costType === "Labor" ? "bg-amber-500 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
-                    >
-                      Labor
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCostType("Wastage")}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition ${costType === "Wastage" ? "bg-amber-500 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
-                    >
-                      Wastage
-                    </button>
+                  <div className="inline-flex rounded-lg border bg-white p-0.5">
+                    <button type="button" onClick={() => setCostType("Labor")} className={`px-3 py-1 text-xs font-medium rounded-md ${costType === "Labor" ? "bg-amber-500 text-white shadow-sm" : "text-slate-600"}`}>Labor</button>
+                    <button type="button" onClick={() => setCostType("Wastage")} className={`px-3 py-1 text-xs font-medium rounded-md ${costType === "Wastage" ? "bg-amber-500 text-white shadow-sm" : "text-slate-600"}`}>Wastage</button>
                   </div>
                 </div>
-
                 {costType === "Labor" ? (
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1">Labor Rate (₹/g)</label>
-                    <input
-                      type="number"
-                      value={laborRate}
-                      onChange={(e) => setLaborRate(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
-                    />
+                    <input type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white" />
                   </div>
                 ) : (
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1">Wastage Percentage (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={wastagePct}
-                      onChange={(e) => setWastagePct(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
-                    />
+                    <input type="number" step="0.1" value={wastagePct} onChange={(e) => setWastagePct(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white" />
                   </div>
                 )}
               </div>
 
-              {/* Diamond Matrix Inputs */}
               <div className="grid grid-cols-2 gap-3 border-t pt-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Diamond Weight (ct)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={diamondWeight}
-                    onChange={(e) => setDiamondWeight(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Diamond Weight (ct) <span className="text-red-500">*</span></label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    value={diamondWeight} 
+                    onChange={(e) => setDiamondWeight(e.target.value)} 
+                    placeholder="0.00" 
+                    className={`w-full px-3 py-2 border rounded-xl text-sm ${isDiamondWeightInvalid ? "border-red-500 bg-red-50" : "border-slate-200"}`} 
                   />
+                  {isDiamondWeightInvalid && <p className="text-red-500 text-[10px] font-semibold mt-1">⚠️ Diamond Weight is mandatory</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Diamond Rate (₹/ct)</label>
-                  <input
-                    type="number"
-                    value={diamondRate}
-                    onChange={(e) => setDiamondRate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Diamond Rate (₹/ct) <span className="text-red-500">*</span></label>
+                  <input 
+                    type="number" 
+                    value={diamondRate} 
+                    onChange={(e) => setDiamondRate(e.target.value)} 
+                    className={`w-full px-3 py-2 border rounded-xl text-sm ${isDiamondRateInvalid ? "border-red-500 bg-red-50" : "border-slate-200"}`} 
                   />
+                  {isDiamondRateInvalid && <span className="text-[10px] font-semibold text-red-500">Rate required & can't be 0</span>}
                 </div>
               </div>
 
-              {/* Adaptive Certificate Switch Framework */}
-              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-2.5">
+              <div className="bg-slate-50 border p-3.5 rounded-xl space-y-2.5">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="certToggle" className="text-xs font-bold text-slate-700 uppercase tracking-wide cursor-pointer select-none">
-                    Apply Certification Charge
-                  </label>
-                  <input
-                    id="certToggle"
-                    type="checkbox"
-                    checked={isCertEnabled}
-                    onChange={(e) => setIsCertEnabled(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 accent-amber-500 cursor-pointer"
-                  />
+                  <label htmlFor="certToggle" className="text-xs font-bold text-slate-700 uppercase tracking-wide cursor-pointer">Apply Certification Charge</label>
+                  <input id="certToggle" type="checkbox" checked={isCertEnabled} onChange={(e) => setIsCertEnabled(e.target.checked)} className="w-4 h-4 text-amber-600 accent-amber-500 cursor-pointer" />
                 </div>
-                
                 <div>
-                  <label className={`block text-xs font-medium mb-1 transition-colors ${isCertEnabled ? "text-slate-600" : "text-slate-300"}`}>
-                    Certificate Rate (₹/Diamond ct)
-                  </label>
-                  <input
-                    type="number"
-                    disabled={!isCertEnabled}
-                    value={certRate}
-                    onChange={(e) => setCertRate(e.target.value)}
-                    placeholder={isCertEnabled ? "Enter rate..." : "Disabled (₹0)"}
-                    className={`w-full px-3 py-2 border rounded-xl text-sm font-medium transition-all ${
-                      isCertEnabled 
-                        ? "border-slate-300 bg-white text-slate-900" 
-                        : "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
-                    }`}
-                  />
+                  <label className={`block text-xs font-medium mb-1 ${isCertEnabled ? "text-slate-600" : "text-slate-300"}`}>Certificate Rate (₹/Diamond ct)</label>
+                  <input type="number" disabled={!isCertEnabled} value={certRate} onChange={(e) => setCertRate(e.target.value)} placeholder={isCertEnabled ? "Enter rate..." : "Disabled (₹0)"} className={`w-full px-3 py-2 border rounded-xl text-sm font-medium ${isCertEnabled ? "border-slate-300 bg-white" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`} />
                 </div>
               </div>
 
-              {/* Color Stone Matrix Inputs */}
               <div className="grid grid-cols-2 gap-3 border-t pt-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Color Stone Wt (ct)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={colorStoneWeight}
-                    onChange={(e) => setColorStoneWeight(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
-                  />
+                  <input type="number" step="0.01" value={colorStoneWeight} onChange={(e) => setColorStoneWeight(e.target.value)} placeholder="0.00" className="w-full px-3 py-2 border rounded-xl text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Color Stone Rate (₹/ct)</label>
-                  <input
-                    type="number"
-                    value={colorStoneRate}
-                    onChange={(e) => setColorStoneRate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm"
+                  <input 
+                    type="number" 
+                    value={colorStoneRate} 
+                    onChange={(e) => setColorStoneRate(e.target.value)} 
+                    className={`w-full px-3 py-2 border rounded-xl text-sm ${showCalcErrors && parseFloat(colorStoneWeight) > 0 && (parseFloat(colorStoneRate) || 0) <= 0 ? "border-red-500 bg-red-50" : "border-slate-200"}`} 
                   />
+                  {showCalcErrors && parseFloat(colorStoneWeight) > 0 && (parseFloat(colorStoneRate) || 0) <= 0 && <span className="text-[10px] font-semibold text-red-500">Rate required when Wt added</span>}
                 </div>
               </div>
-
             </div>
 
-            {/* RECEIPT CALCULATION VIEW */}
-            <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl space-y-5">
               <h2 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Pricing Valuation</h2>
-              
               <div className="space-y-3 border-b border-slate-800 pb-4 text-sm text-slate-300">
-                <div className="flex justify-between font-medium text-amber-100">
-                  <span>Calculated Net Gold Wt:</span>
-                  <span className="font-mono">{results.netGoldWeight} g</span>
-                </div>
+                <div className="flex justify-between font-medium text-amber-100"><span>Calculated Net Gold Wt:</span><span className="font-mono">{results.netGoldWeight} g</span></div>
                 <hr className="border-slate-800" />
-                <div className="flex justify-between">
-                  <span>Net Gold Value:</span>
-                  <span className="font-mono">₹{results.goldValue}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{costType === "Labor" ? "Labor Charges (on Net Wt)" : "Wastage Cost (on Net Wt)"}:</span>
-                  <span className="font-mono">₹{results.processingCharge}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Diamond Value:</span>
-                  <span className="font-mono">₹{results.totalDiamondCost}</span>
-                </div>
-                {isCertEnabled && parseFloat(results.totalCertCost) > 0 && (
-                  <div className="flex justify-between text-amber-200/90">
-                    <span>Diamond Cert Fee:</span>
-                    <span className="font-mono">₹{results.totalCertCost}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Total Color Stone Value:</span>
-                  <span className="font-mono">₹{results.totalColorStoneCost}</span>
-                </div>
-                {parseFloat(results.appliedDiscount) > 0 && (
-                  <div className="flex justify-between text-emerald-400 font-medium">
-                    <span>Applied Discount:</span>
-                    <span className="font-mono">-₹{results.appliedDiscount}</span>
-                  </div>
-                )}
+                <div className="flex justify-between"><span>Net Gold Value:</span><span className="font-mono">₹{parseFloat(results.goldValue).toLocaleString('en-IN')}</span></div>
+                <div className="flex justify-between"><span>{costType === "Labor" ? "Labor Charges (on Net Wt)" : "Wastage Cost (on Net Wt)"}:</span><span className="font-mono">₹{parseFloat(results.processingCharge).toLocaleString('en-IN')}</span></div>
+                <div className="flex justify-between"><span>Total Diamond Value:</span><span className="font-mono">₹{parseFloat(results.totalDiamondCost).toLocaleString('en-IN')}</span></div>
+                {isCertEnabled && parseFloat(results.totalCertCost) > 0 && (<div className="flex justify-between text-amber-200/90"><span>Diamond Cert Fee:</span><span className="font-mono">₹{parseFloat(results.totalCertCost).toLocaleString('en-IN')}</span></div>)}
+                <div className="flex justify-between"><span>Total Color Stone Value:</span><span className="font-mono">₹{parseFloat(results.totalColorStoneCost).toLocaleString('en-IN')}</span></div>
+                {parseFloat(results.appliedDiscount) > 0 && (<div className="flex justify-between text-emerald-400 font-medium"><span>Applied Discount:</span><span className="font-mono">-₹{parseFloat(results.appliedDiscount).toLocaleString('en-IN')}</span></div>)}
               </div>
-
-              <div className="pt-2 flex justify-between items-baseline">
+              <div className="flex justify-between items-baseline">
                 <span className="text-sm font-medium text-slate-400">Total Valuation:</span>
-                <span className="text-3xl font-extrabold text-amber-400 font-mono">₹{results.finalPrice}</span>
+                <span className="text-3xl font-extrabold text-amber-400 font-mono">₹{parseInt(results.finalPrice).toLocaleString('en-IN')}</span>
               </div>
+              
+              <button 
+                onClick={handleInitiateQuote}
+                className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-lg flex justify-center items-center gap-2"
+              >
+                📄 Create Quote
+              </button>
             </div>
           </div>
         ) : (
-          /* =======================================================
-             BACKEND: MANAGE RULES VIEW
-             ======================================================= */
           <div className="space-y-6">
-            {/* DEFAULT BASELINE SETTINGS */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl p-5 border shadow-sm space-y-4">
               <h2 className="text-base font-bold text-slate-800 border-b pb-2">Global System Defaults</h2>
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Default Gold Rate (₹/1g)</label>
-                  <input
-                    type="number"
-                    value={defaultGoldRate}
-                    onChange={(e) => setDefaultGoldRate(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Default Diamond Rate (₹/ct)</label>
-                  <input
-                    type="number"
-                    value={defaultDiamondRate}
-                    onChange={(e) => setDefaultDiamondRate(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Default Certificate Rate (₹/ct)</label>
-                  <input
-                    type="number"
-                    value={defaultCertRate}
-                    onChange={(e) => setDefaultCertRate(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Default Wastage Percentage (%)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={defaultWastagePct}
-                    onChange={(e) => setDefaultWastagePct(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Default Color Stone Rate (₹/ct)</label>
-                  <input
-                    type="number"
-                    value={defaultColorStoneRate}
-                    onChange={(e) => setDefaultColorStoneRate(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm"
-                  />
-                </div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Default Gold Rate (₹/1g)</label><input type="number" value={defaultGoldRate} onChange={(e) => setDefaultGoldRate(e.target.value)} className="w-full px-3 py-1.5 border rounded-xl text-sm" /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Default Diamond Rate (₹/ct)</label><input type="number" value={defaultDiamondRate} onChange={(e) => setDefaultDiamondRate(e.target.value)} className="w-full px-3 py-1.5 border rounded-xl text-sm" /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Default Certificate Rate (₹/ct)</label><input type="number" value={defaultCertRate} onChange={(e) => setDefaultCertRate(e.target.value)} className="w-full px-3 py-1.5 border rounded-xl text-sm" /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Default Wastage Percentage (%)</label><input type="number" step="0.1" value={defaultWastagePct} onChange={(e) => setDefaultWastagePct(e.target.value)} className="w-full px-3 py-1.5 border rounded-xl text-sm" /></div>
+                <div><label className="block text-xs font-medium text-slate-600 mb-1">Default Color Stone Rate (₹/ct)</label><input type="number" value={defaultColorStoneRate} onChange={(e) => setDefaultColorStoneRate(e.target.value)} className="w-full px-3 py-1.5 border rounded-xl text-sm" /></div>
               </div>
             </div>
 
-            {/* PURITY MATRIX WITH MANAGEMENT */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl p-5 border shadow-sm space-y-4">
               <h2 className="text-base font-bold text-slate-800 border-b pb-2">Purity Dynamic Matrix</h2>
               <div className="space-y-2">
                 {purities.map((p) => (
-                  <div key={p.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <div key={p.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border">
                     <span className="font-bold text-slate-700">{p.purity_name} ({p.purity_percentage}%)</span>
-                    <button
-                      onClick={() => handleDeletePurity(p.id)}
-                      className="text-xs text-red-500 font-medium hover:underline px-2 py-1"
-                    >
-                      Delete
-                    </button>
+                    <button onClick={() => handleDeletePurity(p.id)} className="text-xs text-red-500 font-medium hover:underline">Delete</button>
                   </div>
                 ))}
               </div>
               <form onSubmit={handleAddPurity} className="flex gap-2 pt-2 border-t border-dashed">
-                <input
-                  type="text"
-                  placeholder="e.g., 22K"
-                  value={newPurityName}
-                  onChange={(e) => setNewPurityName(e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-sm border rounded-xl outline-none"
-                />
-                <input
-                  type="number"
-                  placeholder="%"
-                  value={newPurityPct}
-                  onChange={(e) => setNewPurityPct(e.target.value)}
-                  className="w-20 px-3 py-1.5 text-sm border rounded-xl outline-none"
-                />
+                <input type="text" placeholder="e.g., 22K" value={newPurityName} onChange={(e) => setNewPurityName(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border rounded-xl outline-none" />
+                <input type="number" placeholder="%" value={newPurityPct} onChange={(e) => setNewPurityPct(e.target.value)} className="w-20 px-3 py-1.5 text-sm border rounded-xl outline-none" />
                 <button type="submit" className="px-3 py-1.5 bg-slate-800 text-white text-sm font-semibold rounded-xl">Add</button>
               </form>
             </div>
 
-            {/* LABOR MATRIX RULES */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white rounded-2xl p-5 border shadow-sm space-y-4">
               <h2 className="text-base font-bold text-slate-800 border-b pb-2">Labour Framework</h2>
               <div className="space-y-2">
                 {laborRules.map((l) => (
-                  <div key={l.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <div key={l.id} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border">
                     <span className="text-sm font-medium text-slate-700">{l.tier_name} - ₹{l.base_labor_rate}/g</span>
-                    {laborRules.length > 1 && (
-                      <button
-                        onClick={() => handleDeleteLabor(l.id)}
-                        className="text-xs text-red-500 font-medium hover:underline px-2 py-1"
-                      >
-                        Delete
-                      </button>
-                    )}
+                    {laborRules.length > 1 && (<button onClick={() => handleDeleteLabor(l.id)} className="text-xs text-red-500 font-medium hover:underline">Delete</button>)}
                   </div>
                 ))}
               </div>
               <form onSubmit={handleAddLabor} className="flex gap-2 pt-2 border-t border-dashed">
-                <input
-                  type="text"
-                  placeholder="Tier Name"
-                  value={newLaborTier}
-                  onChange={(e) => setNewLaborTier(e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-sm border rounded-xl outline-none"
-                />
-                <input
-                  type="number"
-                  placeholder="₹/g"
-                  value={newLaborRateInput}
-                  onChange={(e) => setNewLaborRateInput(e.target.value)}
-                  className="w-20 px-3 py-1.5 text-sm border rounded-xl outline-none"
-                />
+                <input type="text" placeholder="Tier Name" value={newLaborTier} onChange={(e) => setNewLaborTier(e.target.value)} className="flex-1 px-3 py-1.5 text-sm border rounded-xl outline-none" />
+                <input type="number" placeholder="₹/g" value={newLaborRateInput} onChange={(e) => setNewLaborRateInput(e.target.value)} className="w-20 px-3 py-1.5 text-sm border rounded-xl outline-none" />
                 <button type="submit" className="px-3 py-1.5 bg-slate-800 text-white text-sm font-semibold rounded-xl">Add</button>
               </form>
             </div>
           </div>
         )}
       </main>
+
+      {/* MODAL: QUOTE GENERATION STUDIO */}
+      {isQuoteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-3xl sticky top-0 z-10">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                {!showFinalQuoteSheet ? "Step 2 & 3: Details & Media" : "Step 4: Final Document Print"}
+              </h3>
+              <button 
+                onClick={() => setIsQuoteModalOpen(false)}
+                className="w-7 h-7 flex items-center justify-center bg-slate-200/60 text-slate-700 font-bold rounded-full text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content Body */}
+            <div className={`${showFinalQuoteSheet ? "p-3" : "p-5"} flex-1 space-y-4`}>
+              {!showFinalQuoteSheet ? (
+                <form onSubmit={handleCompileQuote} className="space-y-4">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Prospect Credentials</h4>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Customer Full Name *</label>
+                      <input required type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Enter full name" className="w-full px-3 py-2 border rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Mobile Contact Phone *</label>
+                      <input required type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="e.g., 9876543210" className="w-full px-3 py-2 border rounded-xl text-sm font-mono" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Email ID address (Optional)</label>
+                      <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="client@example.com" className="w-full px-3 py-2 border rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Item Type (e.g., Ring, Bracelet, Necklace) *</label>
+                      <input required type="text" value={itemType} onChange={(e) => setItemType(e.target.value)} placeholder="e.g., Ring" className="w-full px-3 py-2 border rounded-xl text-sm" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 border-t pt-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Jewellery Ornament Asset Attachment</h4>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Capture ornament from live counter camera view</label>
+                    
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment" 
+                      ref={fileInputRef}
+                      onChange={handleImageCapture}
+                      className="hidden" 
+                    />
+
+                    {attachedImage ? (
+                      <div className="relative group rounded-2xl overflow-hidden border bg-slate-50 h-40 flex items-center justify-center shadow-inner">
+                        <img src={attachedImage} alt="Jewelry Snapshot" className="h-full w-full object-contain" />
+                        <button 
+                          type="button" 
+                          onClick={() => setAttachedImage(null)}
+                          className="absolute bottom-2 right-2 px-3 py-1 bg-red-600 text-white rounded-lg text-2xl shadow-md font-bold"
+                        >
+                          🗑️ Swap Image
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full h-32 border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-2xl bg-amber-50/20 transition flex flex-col items-center justify-center text-slate-500 gap-1.5"
+                      >
+                        <span className="text-2xl">📸</span>
+                        <span className="text-xs font-bold text-slate-600">Click Camera / Upload Photo</span>
+                        <span className="text-[10px] text-slate-400">Supports live capture snapshot directly</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full mt-4 py-3 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md"
+                  >
+                    Compile Final Valuation Quote →
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div id="print-quote-frame" className="border border-slate-300 rounded-2xl p-5 bg-white shadow-xs space-y-4 text-slate-800 font-sans">
+  
+                    {/* 1. Spiritual Invocations / Blessings Top Bar */}
+                    <div className="text-center space-y-0.5 border-b pb-2 border-slate-100">
+                      <div className="text-[10px] font-semibold text-slate-500 tracking-wide">|| Om Shree Ganeshay Namah ||</div>
+                      <div className="text-[9px] text-slate-400 font-medium">|| Om Shree Shishoda Kshetrapal Bavji Namah ||</div>
+                      <div className="text-[9px] text-slate-400 font-medium">|| Om Shree Purvaj Bavji Namah ||</div>
+                    </div>
+
+                    {/* 2. Main Store Branding & Contact Metadata Row */}
+                    <div className="flex justify-between items-start border-b border-slate-200 pb-3">
+                      <div>
+                        <h1 className="text-xl font-black uppercase tracking-[0.15em] text-slate-900">
+                          Om Diamonds
+                        </h1>
+                        <span className="block text-[10px] font-bold text-amber-700 tracking-wider uppercase">
+                          Exclusive Diamond Jewellery
+                        </span>
+                        <div className="mt-1.5 text-[10px] text-slate-500 font-mono leading-tight">
+                          <div>📞 +91-897 6732 617</div>
+                          <div>📞 +91-865 5558 470</div>
+                          <div>✉️ omdiamond123@gmail.com</div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right space-y-1">
+                        <span className="text-sm font-black text-slate-900 block tracking-widest uppercase bg-slate-100 px-2 py-0.5 rounded-md inline-block">
+                          Quotation
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-600 block">Date: {quoteDate}</span>
+                      </div>
+                    </div>
+
+                    {/* 3. Customer Credentials & Item Info Box */}
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Quotation For:</span>
+                          <span className="font-extrabold text-slate-900 text-sm">{clientName}</span>
+                        </div>
+                        {clientEmail && (
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Email:</span>
+                            <span className="text-slate-600 font-mono block truncate">{clientEmail}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right border-l pl-3 border-slate-200 space-y-1">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Contact Line:</span>
+                          <span className="font-mono font-bold text-slate-900 text-sm">{clientPhone}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Item Type:</span>
+                          <span className="font-bold text-amber-800 capitalize">{itemType || "Ornament Estimate"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TABULAR ITEM & PRICE LEDGER BREAKDOWN */}
+                    <div className="overflow-hidden border border-slate-200 rounded-xl text-xs">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                            <th className="p-2">Description</th>
+                            <th className="p-2 text-right">Weight/Qty</th>
+                            <th className="p-2 text-right">Rate (₹)</th>
+                            <th className="p-2 text-right">Net Value</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-slate-700">
+                          <tr>
+                            <td className="p-2 font-medium">Gross Weight</td>
+                            <td className="p-2 text-right font-mono">{grossWeight || "0.000"} g</td>
+                            <td className="p-2 text-right text-slate-400">—</td>
+                            <td className="p-2 text-right text-slate-400">—</td>
+                          </tr>
+                          <tr className="bg-slate-50/50">
+                            <td className="p-2 font-medium">Net Gold ({results.purityName})</td>
+                            <td className="p-2 text-right font-mono">{results.netGoldWeight} g</td>
+                            <td className="p-2 text-right font-mono">₹{parseFloat(goldRate).toLocaleString('en-IN')}</td>
+                            <td className="p-2 text-right font-mono text-slate-900">₹{parseFloat(results.goldValue).toLocaleString('en-IN')}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-2 font-medium">
+                              {costType === "Labor" ? "Labor Charges" : `Wastage Premium (${wastagePct}%)`}
+                            </td>
+                            <td className="p-2 text-right font-mono">{results.netGoldWeight} g</td>
+                            <td className="p-2 text-right font-mono">
+                              {costType === "Labor" ? `₹${laborRate}` : "Dynamic"}
+                            </td>
+                            <td className="p-2 text-right font-mono text-slate-900">₹{parseFloat(results.processingCharge).toLocaleString('en-IN')}</td>
+                          </tr>
+                          {parseFloat(diamondWeight) > 0 && (
+                            <tr className="bg-slate-50/50">
+                              <td className="p-2 font-medium">Diamonds</td>
+                              <td className="p-2 text-right font-mono">{diamondWeight} ct</td>
+                              <td className="p-2 text-right font-mono">₹{parseFloat(diamondRate).toLocaleString('en-IN')}</td>
+                              <td className="p-2 text-right font-mono text-slate-900">₹{parseFloat(results.totalDiamondCost).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                          {isCertEnabled && parseFloat(results.totalCertCost) > 0 && (
+                            <tr>
+                              <td className="p-2 font-medium">Diamond Lab Cert</td>
+                              <td className="p-2 text-right font-mono">{diamondWeight} ct</td>
+                              <td className="p-2 text-right font-mono">₹{parseFloat(certRate).toLocaleString('en-IN')}</td>
+                              <td className="p-2 text-right font-mono text-slate-900">₹{parseFloat(results.totalCertCost).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                          {parseFloat(colorStoneWeight) > 0 && (
+                            <tr className={isCertEnabled ? "bg-slate-50/50" : ""}>
+                              <td className="p-2 font-medium">Color Stones</td>
+                              <td className="p-2 text-right font-mono">{colorStoneWeight} ct</td>
+                              <td className="p-2 text-right font-mono">₹{parseFloat(colorStoneRate).toLocaleString('en-IN')}</td>
+                              <td className="p-2 text-right font-mono text-slate-900">₹{parseFloat(results.totalColorStoneCost).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Summary Reconciliation Totals */}
+                    <div className="text-xs pt-1 space-y-1.5 text-right max-w-xs ml-auto">
+                      <div className="flex justify-between font-medium text-slate-500">
+                        <span>Subtotal Framework:</span>
+                        <span className="font-mono text-slate-900">₹{parseFloat(results.subtotal).toLocaleString('en-IN')}</span>
+                      </div>
+                      {parseFloat(results.appliedDiscount) > 0 && (
+                        <div className="flex justify-between text-emerald-600 font-bold">
+                          <span>Privilege Discount ({discountType === "Percentage" ? `${discountValue}%` : "Fixed"}):</span>
+                          <span className="font-mono">-₹{parseFloat(results.appliedDiscount).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="bg-slate-900 text-amber-400 p-3 rounded-xl flex justify-between items-center text-left mt-2 shadow-md">
+                        <span className="text-xs font-bold uppercase tracking-wider">Total Value:</span>
+                        <span className="text-xl font-black font-mono">
+                          ₹{parseInt(results.finalPrice).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* ACTION FOOTER BUTTON TRIGGERS */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <button
+                      onClick={() => window.print()}
+                      className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold uppercase tracking-wider rounded-xl transition border shadow-xs"
+                    >
+                      🖨️ Download / Print
+                    </button>
+                    <button
+                      onClick={handleNativeShare}
+                      className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-md flex justify-center items-center gap-1.5"
+                    >
+                      Share Quote
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
