@@ -46,6 +46,7 @@ export async function POST(request) {
     
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: "Failed to synchronize configurations globally" }, { status: 500 });
+    // 🔑 CHANGED HERE: Return the actual error message to see what went wrong!
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
