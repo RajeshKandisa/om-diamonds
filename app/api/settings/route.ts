@@ -1,46 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import Redis from "ioredis";
 
-// 🔑 FIXED: Uses the native URL parser to strip inline credentials out of the endpoint string
+// Cache the connection instance globally so serverless environments don't open new sockets on every click
+let cachedClient: Redis | null = null;
+
 const getRedisClient = () => {
+  if (cachedClient) return cachedClient;
+
   const rawUrl = process.env.OMDIAMONDS_REDIS_URL;
   if (!rawUrl) return null;
 
-  try {
-    // Replace redis:// protocol temporarily with http:// so the native URL parser handles it perfectly
-    const parseableUrl = rawUrl.startsWith("redis") 
-      ? rawUrl.replace(/^redis(s)?:\/\//, "https://") 
-      : rawUrl;
-      
-    const parsed = new URL(parseableUrl);
-    
-    // Extract password/token safely from the credentials block
-    const token = parsed.password || parsed.username || "";
-    
-    // Construct a completely clean URL endpoint free of inline credentials (e.g., https://host:port)
-    const cleanRestUrl = `${parsed.protocol}//${parsed.host}`;
+  // Use standard TCP connection rules with a strict network drop boundary
+  cachedClient = new Redis(rawUrl, {
+    tls: { rejectUnauthorized: false },
+    connectTimeout: 5000,           // Give up after 5 seconds instead of hanging
+    maxRetriesPerRequest: 1,       // 🚀 CRITICAL: Prevents hitting the 20-retry loop error if the network drops
+    retryStrategy(times) {
+      // If a request fails, wait 50ms and try just once more before returning a safe fallback
+      return times <= 1 ? 50 : null;
+    }
+  });
 
-    return new Redis({
-      url: cleanRestUrl,
-      token: token,
-    });
-  } catch (error) {
-    console.error("Failed to parse connection credentials:", error);
-    return null;
-  }
+  // Gracefully log connection issues to your Vercel logs instead of crashing the process
+  cachedClient.on("error", (err) => {
+    console.error("Redis socket error captured:", err.message);
+  });
+
+  return cachedClient;
 };
-
-const client = getRedisClient();
 
 export async function GET() {
   try {
+    const client = getRedisClient();
     if (!client) {
       throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
     }
 
-    const data = await client.get("om_diamonds_settings");
+    const rawData = await client.get("om_diamonds_settings");
     
-    if (!data) {
+    if (!rawData) {
       return NextResponse.json({
         defaultGoldRate: "14000",
         defaultDiamondRate: "60000",
@@ -50,25 +48,34 @@ export async function GET() {
       });
     }
     
-    return NextResponse.json(typeof data === "string" ? JSON.parse(data) : data);
+    return NextResponse.json(JSON.parse(rawData));
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown server error";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    // If the database is sleeping or failing to connect, fall back to safe default numbers 
+    // so your website doesn't show a blank screen or error out for shoppers.
+    return NextResponse.json({
+      defaultGoldRate: "14000",
+      defaultDiamondRate: "60000",
+      defaultWastagePct: "8.0",
+      defaultColorStoneRate: "200",
+      defaultCertRate: "700",
+      warning: err instanceof Error ? err.message : "Database fallback activated"
+    });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const client = getRedisClient();
     if (!client) {
       throw new Error("Missing environment variable: OMDIAMONDS_REDIS_URL");
     }
 
     const body = await request.json();
-    await client.set("om_diamonds_settings", body);
+    await client.set("om_diamonds_settings", JSON.stringify(body));
     
     return NextResponse.json({ success: true });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown server error";
+    const errorMessage = err instanceof Error ? err.message : "Unknown database synchronization error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
