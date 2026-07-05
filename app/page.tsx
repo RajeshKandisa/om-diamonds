@@ -1,17 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { QuotePDF } from '@/components/QuotePDF';
 
 interface PurityMapping {
   id: string;
   purity_name: string;
   purity_percentage: number;
-}
-
-interface LaborRule {
-  id: string;
-  tier_name: string;
-  base_labor_rate: number;
 }
 
 export default function OmDiamondsApp() {
@@ -21,7 +17,7 @@ export default function OmDiamondsApp() {
   const [defaultWastagePct, setDefaultWastagePct] = useState<string>("8.0");
   const [defaultColorStoneRate, setDefaultColorStoneRate] = useState<string>("200");
   const [defaultCertRate, setDefaultCertRate] = useState<string>("700");
-  const [defaultLaborRate, setDefaultLaborRate] = useState("500"); // 🔑 ADDED
+  const [defaultLaborRate, setDefaultLaborRate] = useState("500");
 
   // --- DYNAMIC PURITY SEEDS ---
   const [purities, setPurities] = useState<PurityMapping[]>([
@@ -111,7 +107,6 @@ export default function OmDiamondsApp() {
     const style = document.createElement("style");
     style.innerHTML = `
       @media print {
-        /* Completely clear browser default margins */
         @page {
           margin: 0mm;
           size: auto;
@@ -121,11 +116,9 @@ export default function OmDiamondsApp() {
           padding: 0 !important;
           background: #fff !important;
         }
-        /* Hide everything on the viewport securely */
         body * {
           visibility: hidden !important;
         }
-        /* Pull printable component to root viewport context and make it visible */
         #print-quote-frame, #print-quote-frame * {
           visibility: visible !important;
         }
@@ -617,7 +610,6 @@ export default function OmDiamondsApp() {
                     className="w-full px-3 py-1.5 border rounded-xl text-sm" 
                   />
                 </div>
-                {/* Global Labor Rate Input field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Default Labor Rate (per gram)</label>
                   <input
@@ -741,14 +733,14 @@ export default function OmDiamondsApp() {
                 <div className="space-y-4">
                   <div id="print-quote-frame" className="border border-slate-300 rounded-2xl p-5 bg-white shadow-xs space-y-4 text-slate-800 font-sans">
   
-                    {/* 1. Spiritual Invocations / Blessings Top Bar */}
+                    {/* 1. Spiritual Invocations */}
                     <div className="text-center space-y-0.5 border-b pb-2 border-slate-100">
                       <div className="text-[10px] font-semibold text-slate-500 tracking-wide">|| Om Shree Ganeshay Namah ||</div>
                       <div className="text-[9px] text-slate-400 font-medium">|| Om Shree Shishoda Kshetrapal Bavji Namah ||</div>
                       <div className="text-[9px] text-slate-400 font-medium">|| Om Shree Purvaj Bavji Namah ||</div>
                     </div>
 
-                    {/* 2. Main Store Branding & Contact Metadata Row */}
+                    {/* 2. Main Store Branding */}
                     <div className="flex justify-between items-start border-b border-slate-200 pb-3">
                       <div>
                         <h1 className="text-xl font-black uppercase tracking-[0.15em] text-slate-900">
@@ -772,7 +764,7 @@ export default function OmDiamondsApp() {
                       </div>
                     </div>
 
-                    {/* 3. Customer Credentials & Item Info Box */}
+                    {/* 3. Customer Credentials */}
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <div>
@@ -884,12 +876,51 @@ export default function OmDiamondsApp() {
 
                   {/* ACTION FOOTER BUTTON TRIGGERS */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
-                    <button
-                      onClick={() => window.print()}
-                      className="py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold uppercase tracking-wider rounded-xl transition border shadow-xs"
+                    {/* 🔑 FIXED LINK ENGINE IMPLEMENTATION */}
+                    <PDFDownloadLink
+                      document={
+                        <QuotePDF
+                          data={{
+                            customerName: clientName,
+                            customerPhone: clientPhone,
+                            customerEmail: clientEmail,
+                            itemType: itemType,
+                            goldRate: goldRate,
+                            diamondRate: diamondRate,
+                            totalAmount: parseInt(results.finalPrice),
+                            imageSrc: attachedImage,
+                            grossWeight: grossWeight,
+                            netGoldWeight: results.netGoldWeight,
+                            goldValue: results.goldValue,
+                            purityName: results.purityName,
+                            diamondWeight: diamondWeight,
+                            totalDiamondCost: results.totalDiamondCost,
+                            processingCharge: results.processingCharge,
+                            costType: costType,
+                            wastagePct: wastagePct,
+                            laborRate: laborRate,
+                            appliedDiscount: results.appliedDiscount,
+                            discountType: discountType,
+                            discountValue: discountValue,
+                            subtotal: results.subtotal,
+                            colorStoneWeight: colorStoneWeight,
+                            colorStoneRate: colorStoneRate,
+                            totalColorStoneCost: results.totalColorStoneCost,
+                            isCertEnabled: isCertEnabled,
+                            certRate: certRate,
+                            totalCertCost: results.totalCertCost,
+                            quoteDate: quoteDate,
+                          }}
+                        />
+                      }
+                      fileName={`Quote_${clientName || 'Customer'}.pdf`}
+                      className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition text-center shadow-xs inline-block cursor-pointer"
                     >
-                      🖨️ Download / Print
-                    </button>
+                      {({ loading }) =>
+                        loading ? 'Preparing Document...' : '🖨️ Download PDF'
+                      }
+                    </PDFDownloadLink>
+                    
                     <button
                       onClick={handleNativeShare}
                       className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-md flex justify-center items-center gap-1.5"
