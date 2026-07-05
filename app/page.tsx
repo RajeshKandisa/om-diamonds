@@ -6,20 +6,49 @@ import React, { useState, useEffect, useRef } from "react";
 
 import dynamic from "next/dynamic";
 
-// Define a safe Client-side only component bridge
+// Define a safe Client-side only component bridge with delayed lifecycle mounting
 const SafePDFDownloadButton = dynamic(
   () =>
-    Promise.all([
-      import("@react-pdf/renderer"),
-      import("@/components/QuotePDF")
-    ]).then(([pdfMod, quoteMod]) => {
+    import("@react-pdf/renderer").then((pdfMod) => {
       const PDFDownloadLink = pdfMod.PDFDownloadLink;
-      const QuotePDF = quoteMod.QuotePDF;
       
       return function PDFButtonWrapper({ data, clientName }: { data: any; clientName: string }) {
+        const [ready, setReady] = React.useState(false);
+        const [QuotePDFComp, setQuotePDFComp] = React.useState<any>(null);
+
+        // Allow parent state & large base64 image strings to settle completely before compiling layout
+        React.useEffect(() => {
+          let isMounted = true;
+          
+          import("@/components/QuotePDF").then((quoteMod) => {
+            if (isMounted) {
+              setQuotePDFComp(() => quoteMod.QuotePDF);
+              // Small macro-task timeout to clear the React rendering loop
+              setTimeout(() => {
+                if (isMounted) setReady(true);
+              }, 300);
+            }
+          });
+
+          return () => {
+            isMounted = false;
+          };
+        }, [data.imageSrc]); // Re-initialize safely if a new image is snapped/uploaded
+
+        if (!ready || !QuotePDFComp) {
+          return (
+            <button 
+              disabled 
+              className="py-2.5 bg-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider rounded-xl text-center w-full opacity-70 animate-pulse cursor-not-allowed"
+            >
+              ⏳ Processing Assets...
+            </button>
+          );
+        }
+
         return (
           <PDFDownloadLink
-            document={<QuotePDF data={data} />}
+            document={<QuotePDFComp data={data} />}
             fileName={`Quote_${clientName || "Customer"}.pdf`}
             className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition text-center shadow-xs inline-block cursor-pointer w-full"
           >
