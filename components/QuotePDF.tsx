@@ -3,6 +3,7 @@ import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/render
 
 interface QuotePDFProps {
   data: {
+    logoSrc?: string; // Binds the static branding emblem path string smoothly
     customerName: string;
     customerPhone: string;
     customerEmail?: string;
@@ -55,109 +56,149 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
-    paddingBottom: 15,
+    paddingBottom: 12,
     marginBottom: 15,
   },
-  brandName: {
-    fontSize: 22,
+  logoWrapper: {
+    width: 140,
+    height: 'auto',
+    marginBottom: 6,
+  },
+  logoImage: {
+    width: '100%',
+  },
+  brandingTextGroup: {
+    marginBottom: 4,
+  },
+  companyName: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#0f172a',
     letterSpacing: 1,
   },
-  brandSubtitle: {
-    fontSize: 9,
+  companyTagline: {
+    fontSize: 8,
     color: '#b45309',
-    marginTop: 2,
     fontWeight: 'bold',
+    marginTop: 2,
   },
-  metaText: {
-    fontSize: 9,
+  contactText: {
+    fontSize: 8,
     color: '#64748b',
+    lineHeight: 1.3,
     marginTop: 4,
   },
   quoteBadgeContainer: {
     alignItems: 'flex-end',
   },
-  quoteBadge: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
+  quoteTitleBadge: {
     fontSize: 11,
     fontWeight: 'bold',
+    backgroundColor: '#f1f5f9',
     color: '#0f172a',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    textTransform: 'uppercase',
   },
   dateText: {
     fontSize: 9,
-    color: '#64748b',
-    marginTop: 6,
+    color: '#475569',
+    marginTop: 5,
   },
-  infoGrid: {
-    flexDirection: 'row',
+  customerCard: {
     backgroundColor: '#f8fafc',
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     padding: 10,
     marginBottom: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  infoColumn: {
-    flex: 1,
+  customerColumn: {
+    width: '48%',
   },
-  infoRow: {
-    marginBottom: 4,
-  },
-  infoLabel: {
+  fieldLabel: {
     fontSize: 8,
     color: '#94a3b8',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+    fontWeight: 'bold',
   },
-  infoValue: {
-    fontSize: 10,
+  fieldValue: {
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#0f172a',
   },
+  fieldValueMeta: {
+    fontSize: 9,
+    color: '#475569',
+  },
   table: {
     width: '100%',
-    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    borderRadius: 8,
     overflow: 'hidden',
     marginBottom: 15,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    fontWeight: 'bold',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#f1f5f9',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    paddingVertical: 8,
   },
-  tableHeaderRow: {
-    backgroundColor: '#f1f5f9',
+  tableRowAlternating: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
     borderBottomWidth: 1,
-    borderBottomColor: '#cbd5e1',
+    borderBottomColor: '#f1f5f9',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    alignItems: 'center',
   },
-  tableHeaderCell: {
-    fontWeight: 'bold',
-    color: '#475569',
+  colDesc: { width: '40%' },
+  colQty: { width: '20%', textAlign: 'right' },
+  colRate: { width: '20%', textAlign: 'right' },
+  colTotal: { width: '20%', textAlign: 'right' },
+  headerText: {
     fontSize: 9,
+    color: '#475569',
+    fontWeight: 'bold',
   },
-  colDesc: { width: '40%', paddingLeft: 8 },
-  colWeight: { width: '20%', textAlign: 'right', paddingRight: 8 },
-  colRate: { width: '20%', textAlign: 'right', paddingRight: 8 },
-  colTotal: { width: '20%', textAlign: 'right', paddingRight: 8 },
-  
+  cellText: {
+    fontSize: 9,
+    color: '#334155',
+  },
+  cellTextBold: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#0f172a',
+  },
   summaryContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 5,
+    marginBottom: 15,
   },
   summaryWrapper: {
-    width: 240,
+    width: '60%',
+    gap: 4,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 3,
     fontSize: 9,
   },
   discountText: {
@@ -165,157 +206,172 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   totalBox: {
-    backgroundColor: '#0f172a',
-    borderRadius: 6,
-    padding: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    backgroundColor: '#0f172a',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 4,
   },
   totalLabel: {
+    fontSize: 9,
     color: '#fbbf24',
-    fontSize: 10,
     fontWeight: 'bold',
   },
   totalPrice: {
-    color: '#fbbf24',
     fontSize: 14,
     fontWeight: 'bold',
+    color: '#fbbf24',
   },
   imageSection: {
-    marginTop: 15,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 6,
-    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 12,
     alignItems: 'center',
-    backgroundColor: '#fafafa',
   },
   imageLabel: {
     fontSize: 8,
     color: '#94a3b8',
-    marginBottom: 4,
-    alignSelf: 'flex-start',
+    fontWeight: 'bold',
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   jewelryImage: {
-    width: 140,
-    height: 100,
+    width: 200,
+    height: 150,
     objectFit: 'contain',
+    borderRadius: 6,
   },
 });
 
-export const QuotePDF = ({ data }: QuotePDFProps) => {
+export const QuotePDF: React.FC<QuotePDFProps> = ({ data }) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        
-        <Text style={styles.spiritualHeader}>
-          || Om Shree Ganeshay Namah ||   || Om Shree Shishoda Kshetrapal Bavji Namah ||   || Om Shree Purvaj Bavji Namah ||
-        </Text>
+        {/* 1. Spiritual Invocations */}
+        <View style={styles.spiritualHeader}>
+          <Text>|| Om Shree Ganeshay Namah ||  •  || Om Shree Shishoda Kshetrapal Bavji Namah ||  •  || Om Shree Purvaj Bavji Namah ||</Text>
+        </View>
 
+        {/* 2. Main Store Branding Row with Dynamic Image Toggle */}
         <View style={styles.headerContainer}>
           <View>
-            <Text style={styles.brandName}>Om Diamonds</Text>
-            <Text style={styles.brandSubtitle}>EXCLUSIVE DIAMOND JEWELLERY</Text>
-            <Text style={styles.metaText}>Phone: +91 897 6732 617  |  +91 865 5558 470</Text>
-            <Text style={styles.metaText}>Email: omdiamond123@gmail.com</Text>
+            {data.logoSrc ? (
+              <View style={styles.logoWrapper}>
+                <Image src={data.logoSrc} style={styles.logoImage} />
+              </View>
+            ) : (
+              <View style={styles.brandingTextGroup}>
+                <Text style={styles.companyName}>OM DIAMONDS</Text>
+                <Text style={styles.companyTagline}>EXCLUSIVE DIAMOND JEWELLERY</Text>
+              </View>
+            )}
+            
+            <View style={styles.contactText}>
+              <Text>📞 +91-897 6732 617</Text>
+              <Text>📞 +91-865 5558 470</Text>
+              <Text>✉️ omdiamond123@gmail.com</Text>
+            </View>
           </View>
           
           <View style={styles.quoteBadgeContainer}>
-            <Text style={styles.quoteBadge}>Quotation</Text>
-            <Text style={styles.dateText}>Date: {data.quoteDate}</Text>
+            <Text style={styles.quoteTitleBadge}>Quotation</Text>
+            <Text style={styles.dateText}>Date: {data.quoteDate || 'N/A'}</Text>
           </View>
         </View>
 
-        <View style={styles.infoGrid}>
-          <View style={styles.infoColumn}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>QUOTATION FOR:</Text>
-              <Text style={styles.infoValue}>{data.customerName}</Text>
-            </View>
+        {/* 3. Customer Credentials */}
+        <View style={styles.customerCard}>
+          <View style={styles.customerColumn}>
+            <Text style={styles.fieldLabel}>Quotation For:</Text>
+            <Text style={styles.fieldValue}>{data.customerName}</Text>
             {data.customerEmail && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>EMAIL:</Text>
-                <Text style={styles.infoValue}>{data.customerEmail}</Text>
+              <View style={{ marginTop: 4 }}>
+                <Text style={styles.fieldLabel}>Email ID:</Text>
+                <Text style={styles.fieldValueMeta}>{data.customerEmail}</Text>
               </View>
             )}
           </View>
-          <View style={[styles.infoColumn, { borderLeftWidth: 1, borderLeftColor: '#e2e8f0', paddingLeft: 10 }]}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>CONTACT LINE:</Text>
-              <Text style={styles.infoValue}>{data.customerPhone}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>ITEM TYPE:</Text>
-              <Text style={styles.infoValue}>{data.itemType || 'Ornament Estimate'}</Text>
+          <View style={[styles.customerColumn, { borderLeftWidth: 1, borderLeftColor: '#e2e8f0', paddingLeft: 12 }]}>
+            <Text style={styles.fieldLabel}>Contact Line:</Text>
+            <Text style={styles.fieldValue}>{data.customerPhone}</Text>
+            <View style={{ marginTop: 4 }}>
+              <Text style={styles.fieldLabel}>Item Type:</Text>
+              <Text style={[styles.fieldValueMeta, { fontWeight: 'bold', color: '#92400e' }]}>
+                {data.itemType || "Ornament Estimate"}
+              </Text>
             </View>
           </View>
         </View>
 
+        {/* 4. Tabular Item Ledger */}
         <View style={styles.table}>
-          <View style={[styles.tableRow, styles.tableHeaderRow]}>
-            <Text style={[styles.colDesc, styles.tableHeaderCell]}>Description</Text>
-            <Text style={[styles.colWeight, styles.tableHeaderCell]}>Weight/Qty</Text>
-            <Text style={[styles.colRate, styles.tableHeaderCell]}>Rate (Rs.)</Text>
-            <Text style={[styles.colTotal, styles.tableHeaderCell]}>Net Value</Text>
+          <View style={styles.tableHeader}>
+            <View style={styles.colDesc}><Text style={styles.headerText}>Description</Text></View>
+            <View style={styles.colQty}><Text style={styles.headerText}>Weight/Qty</Text></View>
+            <View style={styles.colRate}><Text style={styles.headerText}>Rate (Rs.)</Text></View>
+            <View style={styles.colTotal}><Text style={styles.headerText}>Net Value</Text></View>
           </View>
 
           <View style={styles.tableRow}>
-            <Text style={styles.colDesc}>Gross Weight</Text>
-            <Text style={styles.colWeight}>{data.grossWeight || '0.000'} g</Text>
-            <Text style={styles.colRate}>—</Text>
-            <Text style={styles.colTotal}>—</Text>
+            <View style={styles.colDesc}><Text style={styles.cellText}>Gross Weight</Text></View>
+            <View style={styles.colQty}><Text style={styles.cellText}>{data.grossWeight || '0.000'} g</Text></View>
+            <View style={styles.colRate}><Text style={{ color: '#94a3b8', textAlign: 'right' }}>—</Text></View>
+            <View style={styles.colTotal}><Text style={{ color: '#94a3b8', textAlign: 'right' }}>—</Text></View>
           </View>
 
-          <View style={[styles.tableRow, { backgroundColor: '#f8fafc' }]}>
-            <Text style={styles.colDesc}>Net Gold ({data.purityName})</Text>
-            <Text style={styles.colWeight}>{data.netGoldWeight} g</Text>
-            <Text style={styles.colRate}>Rs. {Number(data.goldRate).toLocaleString('en-IN')}</Text>
-            <Text style={styles.colTotal}>Rs. {Number(data.goldValue || 0).toLocaleString('en-IN')}</Text>
+          <View style={styles.tableRowAlternating}>
+            <View style={styles.colDesc}><Text style={styles.cellText}>Net Gold Weight ({data.purityName || '18K'})</Text></View>
+            <View style={styles.colQty}><Text style={styles.cellText}>{data.netGoldWeight || '0.000'} g</Text></View>
+            <View style={styles.colRate}><Text style={styles.cellText}>{Number(data.goldRate || 0).toLocaleString('en-IN')}</Text></View>
+            <View style={styles.colTotal}><Text style={styles.cellTextBold}>Rs. {Number(data.goldValue || 0).toLocaleString('en-IN')}</Text></View>
           </View>
 
           <View style={styles.tableRow}>
-            <Text style={styles.colDesc}>
-              {data.costType === 'Labor' ? 'Labor Charges' : `Wastage Premium (${data.wastagePct}%)`}
-            </Text>
-            <Text style={styles.colWeight}>{data.netGoldWeight} g</Text>
-            <Text style={styles.colRate}>
-              {data.costType === 'Labor' ? `Rs. ${data.laborRate}` : 'Dynamic'}
-            </Text>
-            <Text style={styles.colTotal}>
-              Rs. {Number(data.processingCharge || 0).toLocaleString('en-IN')}
-            </Text>
+            <View style={styles.colDesc}>
+              <Text style={styles.cellText}>
+                {data.costType === 'Labor' ? 'Labor Charges' : `Wastage Premium (${data.wastagePct || '0.0'}%)`}
+              </Text>
+            </View>
+            <View style={styles.colQty}><Text style={styles.cellText}>{data.netGoldWeight || '0.000'} g</Text></View>
+            <View style={styles.colRate}>
+              <Text style={styles.cellText}>
+                {data.costType === 'Labor' ? `${data.laborRate}` : 'Dynamic'}
+              </Text>
+            </View>
+            <View style={styles.colTotal}><Text style={styles.cellTextBold}>Rs. {Number(data.processingCharge || 0).toLocaleString('en-IN')}</Text></View>
           </View>
 
-          {Number(data.diamondWeight) > 0 && (
-            <View style={[styles.tableRow, { backgroundColor: '#f8fafc' }]}>
-              <Text style={styles.colDesc}>Diamonds</Text>
-              <Text style={styles.colWeight}>{data.diamondWeight} ct</Text>
-              <Text style={styles.colRate}>Rs. {Number(data.diamondRate).toLocaleString('en-IN')}</Text>
-              <Text style={styles.colTotal}>Rs. {Number(data.totalDiamondCost || 0).toLocaleString('en-IN')}</Text>
+          {Number(data.diamondWeight || 0) > 0 && (
+            <View style={styles.tableRowAlternating}>
+              <View style={styles.colDesc}><Text style={styles.cellText}>Diamonds</Text></View>
+              <View style={styles.colQty}><Text style={styles.cellText}>{data.diamondWeight} ct</Text></View>
+              <View style={styles.colRate}><Text style={styles.cellText}>{Number(data.diamondRate || 0).toLocaleString('en-IN')}</Text></View>
+              <View style={styles.colTotal}><Text style={styles.cellTextBold}>Rs. {Number(data.totalDiamondCost || 0).toLocaleString('en-IN')}</Text></View>
             </View>
           )}
 
-          {data.isCertEnabled && Number(data.totalCertCost) > 0 && (
+          {data.isCertEnabled && Number(data.totalCertCost || 0) > 0 && (
             <View style={styles.tableRow}>
-              <Text style={styles.colDesc}>Diamond Lab Cert Fee</Text>
-              <Text style={styles.colWeight}>{data.diamondWeight} ct</Text>
-              <Text style={styles.colRate}>Rs. {Number(data.certRate || 0).toLocaleString('en-IN')}</Text>
-              <Text style={styles.colTotal}>Rs. {Number(data.totalCertCost || 0).toLocaleString('en-IN')}</Text>
+              <View style={styles.colDesc}><Text style={styles.cellText}>Diamond Lab Cert Fee</Text></View>
+              <View style={styles.colQty}><Text style={styles.cellText}>{data.diamondWeight} ct</Text></View>
+              <View style={styles.colRate}><Text style={styles.cellText}>{Number(data.certRate || 0).toLocaleString('en-IN')}</Text></View>
+              <View style={styles.colTotal}><Text style={styles.cellTextBold}>Rs. {Number(data.totalCertCost || 0).toLocaleString('en-IN')}</Text></View>
             </View>
           )}
 
-          {Number(data.colorStoneWeight) > 0 && (
-            <View style={[styles.tableRow, { backgroundColor: '#f8fafc' }]}>
-              <Text style={styles.colDesc}>Color Stones</Text>
-              <Text style={styles.colWeight}>{data.colorStoneWeight} ct</Text>
-              <Text style={styles.colRate}>Rs. {Number(data.colorStoneRate || 0).toLocaleString('en-IN')}</Text>
-              <Text style={styles.colTotal}>Rs. {Number(data.totalColorStoneCost || 0).toLocaleString('en-IN')}</Text>
+          {Number(data.colorStoneWeight || 0) > 0 && (
+            <View style={data.isCertEnabled ? styles.tableRowAlternating : styles.tableRow}>
+              <View style={styles.colDesc}><Text style={styles.cellText}>Color Stones</Text></View>
+              <View style={styles.colQty}><Text style={styles.cellText}>{data.colorStoneWeight} ct</Text></View>
+              <View style={styles.colRate}><Text style={styles.cellText}>{Number(data.colorStoneRate || 0).toLocaleString('en-IN')}</Text></View>
+              <View style={styles.colTotal}><Text style={styles.cellTextBold}>Rs. {Number(data.totalColorStoneCost || 0).toLocaleString('en-IN')}</Text></View>
             </View>
           )}
         </View>
 
+        {/* 5. Pricing Summarization Ledger */}
         <View style={styles.summaryContainer}>
           <View style={styles.summaryWrapper}>
             <View style={styles.summaryRow}>
@@ -339,13 +395,13 @@ export const QuotePDF = ({ data }: QuotePDFProps) => {
           </View>
         </View>
 
+        {/* 6. Live Snap Reference Attachment */}
         {data.imageSrc && (
           <View style={styles.imageSection}>
             <Text style={styles.imageLabel}>ATTACHED ORNAMENT REFERENCE</Text>
             <Image src={data.imageSrc} style={styles.jewelryImage} />
           </View>
         )}
-
       </Page>
     </Document>
   );
