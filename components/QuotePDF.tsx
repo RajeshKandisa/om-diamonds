@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#b45309',
     letterSpacing: 1,
   },
   brandSubtitle: {
@@ -216,7 +216,7 @@ export const QuotePDF = ({ data }: QuotePDFProps) => {
 
         <View style={styles.headerContainer}>
           <View>
-            <Text style={styles.brandName}>Om Diamonds</Text>
+            <Text style={styles.brandName}>OM DIAMONDS</Text>
             <Text style={styles.brandSubtitle}>EXCLUSIVE DIAMOND JEWELLERY</Text>
             <Text style={styles.metaText}>Phone: +91 897 6732 617  |  +91 865 5558 470</Text>
             <Text style={styles.metaText}>Email: omdiamond123@gmail.com</Text>
