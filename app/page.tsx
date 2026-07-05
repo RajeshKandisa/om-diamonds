@@ -6,15 +6,15 @@ import React, { useState, useEffect, useRef } from "react";
 
 import dynamic from "next/dynamic";
 
-// Standard static imports for layout props configuration
-import { QuotePDF } from "@/components/QuotePDF";
-import type { ComponentProps } from "react";
-
-// Create a unified client wrapper component to handle downloading without type-errors
+// 1. Safe Client-Only self-contained component wrapper
 const SafePDFDownloadButton = dynamic(
   () =>
-    import("@react-pdf/renderer").then((mod) => {
-      const PDFDownloadLink = mod.PDFDownloadLink;
+    Promise.all([
+      import("@react-pdf/renderer"),
+      import("@/components/QuotePDF")
+    ]).then(([pdfMod, quoteMod]) => {
+      const PDFDownloadLink = pdfMod.PDFDownloadLink;
+      const QuotePDF = quoteMod.QuotePDF;
       
       return function PDFButtonWrapper({ data, clientName }: { data: any; clientName: string }) {
         return (
