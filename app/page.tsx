@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 
-// Define a safe Client-side only action bridge for downloading and native file sharing extensions
+// Define a stable Client-side action layout component using standard PDF links to bypass infinite hooks loops
 const SafePDFActions = dynamic(
   () =>
     Promise.all([
@@ -11,49 +11,46 @@ const SafePDFActions = dynamic(
       import("@/components/QuotePDF")
     ]).then(([pdfMod, quoteMod]) => {
       const PDFDownloadLink = pdfMod.PDFDownloadLink;
-      const usePDF = pdfMod.usePDF;
+      const pdf = pdfMod.pdf;
       const QuotePDF = quoteMod.QuotePDF;
       
       return function PDFActionsWrapper({ data, clientName, clientPhone, results, quoteDate, diamondWeight }: { data: any; clientName: string; clientPhone: string; results: any; quoteDate: string; diamondWeight: string }) {
-        // Initializes the local blob instance hook for compiling raw file units
-        const [instance, updateInstance] = usePDF({ document: <QuotePDF data={data} /> });
-
-        // Force a sync lifecycle check whenever data updates
-        React.useEffect(() => {
-          updateInstance(<QuotePDF data={data} />);
-        }, [data, updateInstance]);
+        const [isSharing, setIsSharing] = useState(false);
 
         const handleSharePDF = async () => {
-          if (!instance.blob) {
-            alert("PDF Document is still preparing. Please try sharing again in a moment.");
-            return;
-          }
+          if (isSharing) return;
+          setIsSharing(true);
+          
+          try {
+            // Generate the raw file instance on-demand exactly when the button is clicked to avoid background loop re-renders
+            const docBlob = await pdf(<QuotePDF data={data} />).toBlob();
 
-          // Build a formal Javascript File system object from raw memory blob
-          const pdfFile = new File([instance.blob], `Quote_${clientName || "Customer"}.pdf`, {
-            type: "application/pdf",
-          });
+            // Build a formal Javascript File system object from raw memory blob
+            const pdfFile = new File([docBlob], `Quote_${clientName || "Customer"}.pdf`, {
+              type: "application/pdf",
+            });
 
-          // Fallback WhatsApp message text strings
-          const cleanPhone = clientPhone.replace(/\D/g, "");
-          const localizedPhone = cleanPhone.startsWith("91") && cleanPhone.length === 12 ? cleanPhone : `91${cleanPhone}`;
-          const messageText = `Hello ${clientName || "Customer"},\n\nThank you for visiting Om Diamonds. Here is your custom item estimation:\n\n✨ Total Valuation: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}\n▫ Gold Net Wt: ${results.netGoldWeight}g (${results.purityName})\n▫ Diamond Wt: ${diamondWeight || "0"} ct\n\nGenerated on ${quoteDate}.`;
+            // Fallback WhatsApp message text strings
+            const cleanPhone = clientPhone.replace(/\D/g, "");
+            const localizedPhone = cleanPhone.startsWith("91") && cleanPhone.length === 12 ? cleanPhone : `91${cleanPhone}`;
+            const messageText = `Hello ${clientName || "Customer"},\n\nThank you for visiting Om Diamonds. Here is your custom item estimation:\n\n✨ Total Valuation: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}\n▫ Gold Net Wt: ${results.netGoldWeight}g (${results.purityName})\n▫ Diamond Wt: ${diamondWeight || "0"} ct\n\nGenerated on ${quoteDate}.`;
 
-          // Check if browser native sheet fully supports sharing files (mobile environments)
-          if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-            try {
+            // Check if browser native sheet fully supports sharing files (mobile environments)
+            if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
               await navigator.share({
                 files: [pdfFile],
                 title: "Om Diamonds Quote",
                 text: messageText,
               });
-            } catch (err) {
-              console.log("Sharing cancelled or blocked", err);
+            } else {
+              // Desktop/Fallback: Open direct chat text link if browser denies native file sharing
+              const encodedMsg = encodeURIComponent(messageText);
+              window.open(`https://wa.me/${localizedPhone}?text=${encodedMsg}`, "_blank");
             }
-          } else {
-            // Desktop/Fallback: Open direct chat text link if browser denies native file sharing
-            const encodedMsg = encodeURIComponent(messageText);
-            window.open(`https://wa.me/${localizedPhone}?text=${encodedMsg}`, "_blank");
+          } catch (err) {
+            console.error("Failed to generate or share document safely:", err);
+          } finally {
+            setIsSharing(false);
           }
         };
 
@@ -70,12 +67,12 @@ const SafePDFActions = dynamic(
 
             <button
               onClick={handleSharePDF}
-              disabled={instance.loading}
+              disabled={isSharing}
               className={`py-2.5 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-md flex justify-center items-center gap-1.5 ${
-                instance.loading ? "bg-emerald-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
+                isSharing ? "bg-emerald-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
               }`}
             >
-              {instance.loading ? "Compiling File..." : "📤 Share PDF"}
+              {isSharing ? "Compiling..." : "📤 Share PDF"}
             </button>
           </div>
         );
