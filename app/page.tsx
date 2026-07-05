@@ -8,11 +8,17 @@ import dynamic from 'next/dynamic';
 import type { ComponentProps } from 'react';
 import type { PDFDownloadLink as PDFDownloadLinkType } from '@react-pdf/renderer';
 
-// This explicitly re-attaches the original typescript property definitions to the dynamic client loader
+// Safe Client-only dynamic resolution for the download link framework
 const PDFDownloadLink = dynamic(
   () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
   { ssr: false }
 ) as React.ComponentType<ComponentProps<typeof PDFDownloadLinkType>>;
+
+// Safe Client-only lazy loading for the layout template
+const QuotePDF = dynamic(
+  () => import('@/components/QuotePDF').then((mod) => mod.QuotePDF),
+  { ssr: false }
+) as React.ComponentType<{ data: any }>;
 
 interface PurityMapping {
   id: string;
