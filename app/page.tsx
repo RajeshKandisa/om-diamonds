@@ -941,7 +941,6 @@ export default function OmDiamondsApp() {
                         }}
                       />
                     )}
-                    />
                     
                     <button
                       onClick={handleNativeShare}
