@@ -938,6 +938,7 @@ export default function OmDiamondsApp() {
                       <SafePDFDownloadButton
                         clientName={clientName}
                         data={{
+                          logoSrc: "/Om Diamonds Logo.jpeg",
                           customerName: clientName,
                           customerPhone: clientPhone,
                           customerEmail: clientEmail,
