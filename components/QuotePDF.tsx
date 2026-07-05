@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#b45309',
+    color: '#00553E',
     letterSpacing: 1,
   },
   brandSubtitle: {
