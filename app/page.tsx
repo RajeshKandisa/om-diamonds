@@ -74,7 +74,7 @@ export default function OmDiamondsApp() {
   const [defaultWastagePct, setDefaultWastagePct] = useState<string>("8.0");
   const [defaultColorStoneRate, setDefaultColorStoneRate] = useState<string>("200");
   const [defaultCertRate, setDefaultCertRate] = useState<string>("700");
-  const [defaultLaborRate, setDefaultLaborRate] = useState("500");
+  const [defaultLaborRate, setDefaultLaborRate] = useState("650");
 
   // --- DYNAMIC PURITY SEEDS ---
   const [purities, setPurities] = useState<PurityMapping[]>([
@@ -138,7 +138,7 @@ export default function OmDiamondsApp() {
           if (data.defaultWastagePct) { setDefaultWastagePct(data.defaultWastagePct); setWastagePct(data.defaultWastagePct); }
           if (data.defaultColorStoneRate) { setDefaultColorStoneRate(data.defaultColorStoneRate); setColorStoneRate(data.defaultColorStoneRate); }
           if (data.defaultCertRate) setDefaultCertRate(data.defaultCertRate);
-          if (data.defaultLaborRate) setLaborRate(data.defaultLaborRate);
+          if (data.defaultLaborRate) setDefaultLaborRate(data.defaultLaborRate);
         }
       })
       .catch((err) => console.error("Failed to load global settings:", err));
