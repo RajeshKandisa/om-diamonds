@@ -1,60 +1,83 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-//import { PDFDownloadLink } from '@react-pdf/renderer';
-//import { QuotePDF } from '@/components/QuotePDF';
-
 import dynamic from "next/dynamic";
 
-// Define a safe Client-side only component bridge with delayed lifecycle mounting
-const SafePDFDownloadButton = dynamic(
+// Define a safe Client-side only action bridge for downloading and native file sharing extensions
+const SafePDFActions = dynamic(
   () =>
-    import("@react-pdf/renderer").then((pdfMod) => {
+    Promise.all([
+      import("@react-pdf/renderer"),
+      import("@/components/QuotePDF")
+    ]).then(([pdfMod, quoteMod]) => {
       const PDFDownloadLink = pdfMod.PDFDownloadLink;
+      const usePDF = pdfMod.usePDF;
+      const QuotePDF = quoteMod.QuotePDF;
       
-      return function PDFButtonWrapper({ data, clientName }: { data: any; clientName: string }) {
-        const [ready, setReady] = React.useState(false);
-        const [QuotePDFComp, setQuotePDFComp] = React.useState<any>(null);
+      return function PDFActionsWrapper({ data, clientName, clientPhone, results, quoteDate, diamondWeight }: { data: any; clientName: string; clientPhone: string; results: any; quoteDate: string; diamondWeight: string }) {
+        // Initializes the local blob instance hook for compiling raw file units
+        const [instance, updateInstance] = usePDF({ document: <QuotePDF data={data} /> });
 
-        // Allow parent state & large base64 image strings to settle completely before compiling layout
+        // Force a sync lifecycle check whenever data updates
         React.useEffect(() => {
-          let isMounted = true;
-          
-          import("@/components/QuotePDF").then((quoteMod) => {
-            if (isMounted) {
-              setQuotePDFComp(() => quoteMod.QuotePDF);
-              // Small macro-task timeout to clear the React rendering loop
-              setTimeout(() => {
-                if (isMounted) setReady(true);
-              }, 300);
-            }
+          updateInstance(<QuotePDF data={data} />);
+        }, [data, updateInstance]);
+
+        const handleSharePDF = async () => {
+          if (!instance.blob) {
+            alert("PDF Document is still preparing. Please try sharing again in a moment.");
+            return;
+          }
+
+          // Build a formal Javascript File system object from raw memory blob
+          const pdfFile = new File([instance.blob], `Quote_${clientName || "Customer"}.pdf`, {
+            type: "application/pdf",
           });
 
-          return () => {
-            isMounted = false;
-          };
-        }, [data.imageSrc]); // Re-initialize safely if a new image is snapped/uploaded
+          // Fallback WhatsApp message text strings
+          const cleanPhone = clientPhone.replace(/\D/g, "");
+          const localizedPhone = cleanPhone.startsWith("91") && cleanPhone.length === 12 ? cleanPhone : `91${cleanPhone}`;
+          const messageText = `Hello ${clientName || "Customer"},\n\nThank you for visiting Om Diamonds. Here is your custom item estimation:\n\n✨ Total Valuation: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}\n▫ Gold Net Wt: ${results.netGoldWeight}g (${results.purityName})\n▫ Diamond Wt: ${diamondWeight || "0"} ct\n\nGenerated on ${quoteDate}.`;
 
-        if (!ready || !QuotePDFComp) {
-          return (
-            <button 
-              disabled 
-              className="py-2.5 bg-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider rounded-xl text-center w-full opacity-70 animate-pulse cursor-not-allowed"
-            >
-              ⏳ Processing Assets...
-            </button>
-          );
-        }
+          // Check if browser native sheet fully supports sharing files (mobile environments)
+          if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            try {
+              await navigator.share({
+                files: [pdfFile],
+                title: "Om Diamonds Quote",
+                text: messageText,
+              });
+            } catch (err) {
+              console.log("Sharing cancelled or blocked", err);
+            }
+          } else {
+            // Desktop/Fallback: Open direct chat text link if browser denies native file sharing
+            const encodedMsg = encodeURIComponent(messageText);
+            window.open(`https://wa.me/${localizedPhone}?text=${encodedMsg}`, "_blank");
+          }
+        };
 
         return (
-          <PDFDownloadLink
-            document={<QuotePDFComp data={data} />}
-            fileName={`Quote_${clientName || "Customer"}.pdf`}
-            className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition text-center shadow-xs inline-block cursor-pointer w-full"
-          >
-            {/* @ts-ignore */}
-            {({ loading }) => (loading ? "Preparing Document..." : "🖨️ Download PDF")}
-          </PDFDownloadLink>
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <PDFDownloadLink
+              document={<QuotePDF data={data} />}
+              fileName={`Quote_${clientName || "Customer"}.pdf`}
+              className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition text-center shadow-xs inline-block cursor-pointer w-full"
+            >
+              {/* @ts-ignore */}
+              {({ loading }) => (loading ? "Preparing..." : "🖨️ Download PDF")}
+            </PDFDownloadLink>
+
+            <button
+              onClick={handleSharePDF}
+              disabled={instance.loading}
+              className={`py-2.5 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-md flex justify-center items-center gap-1.5 ${
+                instance.loading ? "bg-emerald-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
+            >
+              {instance.loading ? "Compiling File..." : "📤 Share PDF"}
+            </button>
+          </div>
         );
       };
     }),
@@ -74,7 +97,7 @@ export default function OmDiamondsApp() {
   const [defaultWastagePct, setDefaultWastagePct] = useState<string>("8.0");
   const [defaultColorStoneRate, setDefaultColorStoneRate] = useState<string>("200");
   const [defaultCertRate, setDefaultCertRate] = useState<string>("700");
-  const [defaultLaborRate, setDefaultLaborRate] = useState("650");
+  const [defaultLaborRate, setDefaultLaborRate] = useState("500");
 
   // --- DYNAMIC PURITY SEEDS ---
   const [purities, setPurities] = useState<PurityMapping[]>([
@@ -138,7 +161,7 @@ export default function OmDiamondsApp() {
           if (data.defaultWastagePct) { setDefaultWastagePct(data.defaultWastagePct); setWastagePct(data.defaultWastagePct); }
           if (data.defaultColorStoneRate) { setDefaultColorStoneRate(data.defaultColorStoneRate); setColorStoneRate(data.defaultColorStoneRate); }
           if (data.defaultCertRate) setDefaultCertRate(data.defaultCertRate);
-          if (data.defaultLaborRate) setDefaultLaborRate(data.defaultLaborRate);
+          if (data.defaultLaborRate) setLaborRate(data.defaultLaborRate);
         }
       })
       .catch((err) => console.error("Failed to load global settings:", err));
@@ -339,33 +362,6 @@ export default function OmDiamondsApp() {
     }
 
     setShowFinalQuoteSheet(true);
-  };
-
-  // --- NATIVE SHARE ENGINE WITH DIRECT WHATSAPP REDIRECT ---
-  const handleWhatsAppInvoke = () => {
-    const cleanPhone = clientPhone.replace(/\D/g, "");
-    const localizedPhone = cleanPhone.startsWith("91") && cleanPhone.length === 12 ? cleanPhone : `91${cleanPhone}`;
-    
-    const messageText = `Hello ${clientName},\n\nThank you for visiting Om Diamonds. Here is your custom item estimation:\n\n✨ Total Valuation: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}\n▫ Gold Net Wt: ${results.netGoldWeight}g (${results.purityName})\n▫ Diamond Wt: ${diamondWeight || "0"} ct\n\nGenerated on ${quoteDate}.`;
-    
-    const encodedMsg = encodeURIComponent(messageText);
-    window.open(`https://wa.me/${localizedPhone}?text=${encodedMsg}`, "_blank");
-  };
-
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Om Diamonds Quote",
-          text: `Valuation Quote for ${clientName} - Total: ₹${parseInt(results.finalPrice).toLocaleString('en-IN')}`,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.log("Sharing cancelled or failed", err);
-      }
-    } else {
-      handleWhatsAppInvoke();
-    }
   };
 
   // --- BACKEND ADMIN MANAGEMENT CODE ---
@@ -932,11 +928,15 @@ export default function OmDiamondsApp() {
                   </div>
 
                   {/* ACTION FOOTER BUTTON TRIGGERS */}
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    {/* Render client-side PDF component only after client initialization is fully resolved */}
+                  <div className="pt-1 w-full">
+                    {/* Render client-side PDF component actions only after client initialization is fully resolved */}
                     {typeof window !== 'undefined' && results && (
-                      <SafePDFDownloadButton
+                      <SafePDFActions
                         clientName={clientName}
+                        clientPhone={clientPhone}
+                        results={results}
+                        quoteDate={quoteDate}
+                        diamondWeight={diamondWeight}
                         data={{
                           customerName: clientName,
                           customerPhone: clientPhone,
@@ -970,13 +970,6 @@ export default function OmDiamondsApp() {
                         }}
                       />
                     )}
-                    
-                    <button
-                      onClick={handleNativeShare}
-                      className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition shadow-md flex justify-center items-center gap-1.5"
-                    >
-                      Share Quote
-                    </button>
                   </div>
                 </div>
               )}
