@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from "react";
 
 import dynamic from "next/dynamic";
 
-// 1. Safe Client-Only self-contained component wrapper
+// Define a safe Client-side only component bridge
 const SafePDFDownloadButton = dynamic(
   () =>
     Promise.all([
@@ -904,40 +904,43 @@ export default function OmDiamondsApp() {
 
                   {/* ACTION FOOTER BUTTON TRIGGERS */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
-                    {/* 🔑 FIXED LINK ENGINE IMPLEMENTATION */}
-                    <SafePDFDownloadButton
-                      clientName={clientName}
-                      data={{
-                        customerName: clientName,
-                        customerPhone: clientPhone,
-                        customerEmail: clientEmail,
-                        itemType: itemType,
-                        goldRate: goldRate,
-                        diamondRate: diamondRate,
-                        totalAmount: parseInt(results.finalPrice),
-                        imageSrc: attachedImage,
-                        grossWeight: grossWeight,
-                        netGoldWeight: results.netGoldWeight,
-                        goldValue: results.goldValue,
-                        purityName: results.purityName,
-                        diamondWeight: diamondWeight,
-                        totalDiamondCost: results.totalDiamondCost,
-                        processingCharge: results.processingCharge,
-                        costType: costType,
-                        wastagePct: wastagePct,
-                        laborRate: laborRate,
-                        appliedDiscount: results.appliedDiscount,
-                        discountType: discountType,
-                        discountValue: discountValue,
-                        subtotal: results.subtotal,
-                        colorStoneWeight: colorStoneWeight,
-                        colorStoneRate: colorStoneRate,
-                        totalColorStoneCost: results.totalColorStoneCost,
-                        isCertEnabled: isCertEnabled,
-                        certRate: certRate,
-                        totalCertCost: results.totalCertCost,
-                        quoteDate: quoteDate,
-                      }}
+                    {/* Render client-side PDF component only after client initialization is fully resolved */}
+                    {typeof window !== 'undefined' && results && (
+                      <SafePDFDownloadButton
+                        clientName={clientName}
+                        data={{
+                          customerName: clientName,
+                          customerPhone: clientPhone,
+                          customerEmail: clientEmail,
+                          itemType: itemType,
+                          goldRate: goldRate,
+                          diamondRate: diamondRate,
+                          totalAmount: parseInt(results.finalPrice),
+                          imageSrc: attachedImage,
+                          grossWeight: grossWeight,
+                          netGoldWeight: results.netGoldWeight,
+                          goldValue: results.goldValue,
+                          purityName: results.purityName,
+                          diamondWeight: diamondWeight,
+                          totalDiamondCost: results.totalDiamondCost,
+                          processingCharge: results.processingCharge,
+                          costType: costType,
+                          wastagePct: wastagePct,
+                          laborRate: laborRate,
+                          appliedDiscount: results.appliedDiscount,
+                          discountType: discountType,
+                          discountValue: discountValue,
+                          subtotal: results.subtotal,
+                          colorStoneWeight: colorStoneWeight,
+                          colorStoneRate: colorStoneRate,
+                          totalColorStoneCost: results.totalColorStoneCost,
+                          isCertEnabled: isCertEnabled,
+                          certRate: certRate,
+                          totalCertCost: results.totalCertCost,
+                          quoteDate: quoteDate,
+                        }}
+                      />
+                    )}
                     />
                     
                     <button
