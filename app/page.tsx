@@ -4,21 +4,33 @@ import React, { useState, useEffect, useRef } from "react";
 //import { PDFDownloadLink } from '@react-pdf/renderer';
 //import { QuotePDF } from '@/components/QuotePDF';
 
-import dynamic from 'next/dynamic';
-import type { ComponentProps } from 'react';
-import type { PDFDownloadLink as PDFDownloadLinkType } from '@react-pdf/renderer';
+import dynamic from "next/dynamic";
 
-// Safe Client-only dynamic resolution for the download link framework
-const PDFDownloadLink = dynamic(
-  () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
-  { ssr: false }
-) as React.ComponentType<ComponentProps<typeof PDFDownloadLinkType>>;
+// Standard static imports for layout props configuration
+import { QuotePDF } from "@/components/QuotePDF";
+import type { ComponentProps } from "react";
 
-// Safe Client-only lazy loading for the layout template
-const QuotePDF = dynamic(
-  () => import('@/components/QuotePDF').then((mod) => mod.QuotePDF),
+// Create a unified client wrapper component to handle downloading without type-errors
+const SafePDFDownloadButton = dynamic(
+  () =>
+    import("@react-pdf/renderer").then((mod) => {
+      const PDFDownloadLink = mod.PDFDownloadLink;
+      
+      return function PDFButtonWrapper({ data, clientName }: { data: any; clientName: string }) {
+        return (
+          <PDFDownloadLink
+            document={<QuotePDF data={data} />}
+            fileName={`Quote_${clientName || "Customer"}.pdf`}
+            className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition text-center shadow-xs inline-block cursor-pointer w-full"
+          >
+            {/* @ts-ignore */}
+            {({ loading }) => (loading ? "Preparing Document..." : "🖨️ Download PDF")}
+          </PDFDownloadLink>
+        );
+      };
+    }),
   { ssr: false }
-) as React.ComponentType<{ data: any }>;
+);
 
 interface PurityMapping {
   id: string;
@@ -893,49 +905,40 @@ export default function OmDiamondsApp() {
                   {/* ACTION FOOTER BUTTON TRIGGERS */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     {/* 🔑 FIXED LINK ENGINE IMPLEMENTATION */}
-                    <PDFDownloadLink
-                      document={
-                        <QuotePDF
-                          data={{
-                            customerName: clientName,
-                            customerPhone: clientPhone,
-                            customerEmail: clientEmail,
-                            itemType: itemType,
-                            goldRate: goldRate,
-                            diamondRate: diamondRate,
-                            totalAmount: parseInt(results.finalPrice),
-                            imageSrc: attachedImage,
-                            grossWeight: grossWeight,
-                            netGoldWeight: results.netGoldWeight,
-                            goldValue: results.goldValue,
-                            purityName: results.purityName,
-                            diamondWeight: diamondWeight,
-                            totalDiamondCost: results.totalDiamondCost,
-                            processingCharge: results.processingCharge,
-                            costType: costType,
-                            wastagePct: wastagePct,
-                            laborRate: laborRate,
-                            appliedDiscount: results.appliedDiscount,
-                            discountType: discountType,
-                            discountValue: discountValue,
-                            subtotal: results.subtotal,
-                            colorStoneWeight: colorStoneWeight,
-                            colorStoneRate: colorStoneRate,
-                            totalColorStoneCost: results.totalColorStoneCost,
-                            isCertEnabled: isCertEnabled,
-                            certRate: certRate,
-                            totalCertCost: results.totalCertCost,
-                            quoteDate: quoteDate,
-                          }}
-                        />
-                      }
-                      fileName={`Quote_${clientName || 'Customer'}.pdf`}
-                      className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition text-center shadow-xs inline-block cursor-pointer"
-                    >
-                      {({ loading }) =>
-                        loading ? 'Preparing Document...' : '🖨️ Download PDF'
-                      }
-                    </PDFDownloadLink>
+                    <SafePDFDownloadButton
+                      clientName={clientName}
+                      data={{
+                        customerName: clientName,
+                        customerPhone: clientPhone,
+                        customerEmail: clientEmail,
+                        itemType: itemType,
+                        goldRate: goldRate,
+                        diamondRate: diamondRate,
+                        totalAmount: parseInt(results.finalPrice),
+                        imageSrc: attachedImage,
+                        grossWeight: grossWeight,
+                        netGoldWeight: results.netGoldWeight,
+                        goldValue: results.goldValue,
+                        purityName: results.purityName,
+                        diamondWeight: diamondWeight,
+                        totalDiamondCost: results.totalDiamondCost,
+                        processingCharge: results.processingCharge,
+                        costType: costType,
+                        wastagePct: wastagePct,
+                        laborRate: laborRate,
+                        appliedDiscount: results.appliedDiscount,
+                        discountType: discountType,
+                        discountValue: discountValue,
+                        subtotal: results.subtotal,
+                        colorStoneWeight: colorStoneWeight,
+                        colorStoneRate: colorStoneRate,
+                        totalColorStoneCost: results.totalColorStoneCost,
+                        isCertEnabled: isCertEnabled,
+                        certRate: certRate,
+                        totalCertCost: results.totalCertCost,
+                        quoteDate: quoteDate,
+                      }}
+                    />
                     
                     <button
                       onClick={handleNativeShare}
