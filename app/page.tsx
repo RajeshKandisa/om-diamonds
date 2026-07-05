@@ -1,8 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { QuotePDF } from '@/components/QuotePDF';
+//import { PDFDownloadLink } from '@react-pdf/renderer';
+//import { QuotePDF } from '@/components/QuotePDF';
+
+import dynamic from 'next/dynamic';
+
+// This dynamically registers the PDF downloader exclusively inside the client web browser, 
+// bypassing Vercel's strict server-side compilation completely.
+const PDFDownloadLink = dynamic(
+  () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
+  { ssr: false }
+);
+
+const QuotePDF = dynamic(
+  () => import('@/components/QuotePDF').then((mod) => mod.QuotePDF),
+  { ssr: false }
+);
 
 interface PurityMapping {
   id: string;
